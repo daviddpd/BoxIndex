@@ -5,18 +5,20 @@
 //  Created by Codex on 3/2/26.
 //
 
+import AVFoundation
 import SwiftUI
 import UIKit
 
 struct CameraCaptureView: UIViewControllerRepresentable {
     let onImagePicked: (UIImage) -> Void
     let onCancel: () -> Void
+    var prefersCamera = true
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let controller = UIImagePickerController()
         controller.delegate = context.coordinator
         controller.allowsEditing = false
-        controller.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+        controller.sourceType = preferredSourceType()
         return controller
     }
 
@@ -48,5 +50,23 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                 parent.onCancel()
             }
         }
+    }
+
+    private func preferredSourceType() -> UIImagePickerController.SourceType {
+        let videoAuthorization = AVCaptureDevice.authorizationStatus(for: .video)
+        let canUseCamera = prefersCamera
+            && UIImagePickerController.isSourceTypeAvailable(.camera)
+            && videoAuthorization != .denied
+            && videoAuthorization != .restricted
+
+        if canUseCamera {
+            return .camera
+        }
+
+        if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+            return .photoLibrary
+        }
+
+        return .savedPhotosAlbum
     }
 }

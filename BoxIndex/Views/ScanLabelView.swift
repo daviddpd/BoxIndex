@@ -11,11 +11,13 @@ import VisionKit
 
 struct ScanLabelView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     let containers: [Container]
     let openContainer: (Container) -> Void
     let prefillSearch: (String) -> Void
 
+    @State private var cameraAuthorizationState: CameraAuthorizationState = .notDetermined
     @State private var detectedText = ""
     @State private var matchResult: LabelMatchResult?
     @State private var showingCameraCapture = false
@@ -23,6 +25,11 @@ struct ScanLabelView: View {
     @State private var lastProcessedNormalizedText = ""
     @State private var alreadyMatched = false
     @State private var errorMessage: String?
+    @State private var manualEntryText = ""
+
+    private var canUseLiveScanner: Bool {
+        cameraAuthorizationState == .authorized && ScannerView.canScan
+    }
 
     var body: some View {
         ScrollView {
@@ -32,21 +39,23 @@ struct ScanLabelView: View {
                     .foregroundStyle(.secondary)
 
                 Group {
-                    if ScannerView.canScan {
-                        ScannerView(recognizedDataTypes: [.text()]) { payload in
-                            handle(payload)
-                        }
+                    if canUseLiveScanner {
+                        ScannerView(
+                            recognizedDataTypes: [.text()],
+                            onItemRecognized: { payload in
+                                handle(payload)
+                            },
+                            onStartFailure: { message in
+                                errorMessage = "Live scanning couldn't start. \(message)"
+                            }
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .strokeBorder(.white.opacity(0.15), lineWidth: 1)
                         )
                     } else {
-                        ContentUnavailableView(
-                            "Live Text Scanning Unavailable",
-                            systemImage: "text.viewfinder",
-                            description: Text("Use the photo OCR fallback instead. BoxIndex will read the captured image and try the same deterministic label matching.")
-                        )
+                        fallbackStateCard
                     }
                 }
                 .frame(height: 360)
@@ -64,6 +73,26 @@ struct ScanLabelView: View {
                         ProgressView("Running OCR…")
                             .font(.footnote)
                     }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Manual Match")
+                        .font(.headline)
+
+                    TextField("Type or paste label text", text: $manualEntryText, axis: .vertical)
+                        .lineLimit(1...3)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("scanlabel.manualInput")
+
+                    Button("Match Label") {
+                        process(recognizedText: manualEntryText)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(manualEntryText.trimmed.isEmpty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -147,6 +176,9 @@ struct ScanLabelView: View {
         }
         .navigationTitle("Scan Label")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            cameraAuthorizationState = await CameraAuthorizationService.requestAccessIfNeeded()
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Close") {
@@ -212,6 +244,7 @@ struct ScanLabelView: View {
 
         lastProcessedNormalizedText = normalized
         detectedText = trimmedText
+        manualEntryText = trimmedText
 
         let result = LabelMatchingService.bestMatch(for: trimmedText, containers: containers)
         matchResult = result
@@ -241,5 +274,67 @@ struct ScanLabelView: View {
 
     private func openAndDismiss(_ container: Container) {
         openContainer(container)
+    }
+
+    private var fallbackStateCard: some View {
+        VStack(spacing: 12) {
+            ContentUnavailableView(
+                fallbackTitle,
+                systemImage: fallbackSystemImage,
+                description: Text(fallbackDescription)
+            )
+
+            if cameraAuthorizationState == .denied || cameraAuthorizationState == .restricted {
+                Button("Open Settings") {
+                    openSettings()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var fallbackTitle: String {
+        switch cameraAuthorizationState {
+        case .denied, .restricted:
+            return "Camera Access Is Off"
+        case .authorized, .unavailable:
+            return "Live Text Scanning Unavailable"
+        case .notDetermined:
+            return "Checking Camera Access"
+        }
+    }
+
+    private var fallbackSystemImage: String {
+        switch cameraAuthorizationState {
+        case .denied, .restricted:
+            return "camera.fill.badge.xmark"
+        case .authorized, .unavailable:
+            return "text.viewfinder"
+        case .notDetermined:
+            return "camera"
+        }
+    }
+
+    private var fallbackDescription: String {
+        switch cameraAuthorizationState {
+        case .denied, .restricted:
+            return "Enable camera access in Settings to scan labels live. You can still type label text below, or use Photo OCR to read from an image."
+        case .authorized:
+            return "Live text scanning needs supported iPhone hardware. You can still type label text below or use Photo OCR to read from an image."
+        case .unavailable:
+            return "This device does not expose a usable camera. Type label text below or use Photo OCR to read from an image."
+        case .notDetermined:
+            return "BoxIndex is checking camera access."
+        }
+    }
+
+    private func openSettings() {
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+            return
+        }
+
+        openURL(settingsURL)
     }
 }

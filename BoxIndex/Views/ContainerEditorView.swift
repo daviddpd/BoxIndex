@@ -51,13 +51,17 @@ struct ContainerEditorView: View {
             Section("Basics") {
                 TextField("Container Name", text: $name)
                     .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("container.name")
                 TextField("Label Code", text: $labelCode)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
+                    .accessibilityIdentifier("container.labelCode")
                 TextField("Location", text: $location)
                     .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("container.location")
                 TextField("Sub-location", text: $subLocation)
                     .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("container.subLocation")
             }
 
             Section("Organization") {
@@ -125,6 +129,7 @@ struct ContainerEditorView: View {
                 Button("Save") {
                     save()
                 }
+                .accessibilityIdentifier("container.save")
                 .disabled(!canSave)
             }
         }

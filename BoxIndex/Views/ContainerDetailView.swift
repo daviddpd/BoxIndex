@@ -28,7 +28,12 @@ struct ContainerDetailView: View {
             Section("Container") {
                 LabeledContent("Name", value: container.displayTitle)
                 LabeledContent("Label", value: container.labelCode)
-                LabeledContent("Location", value: container.locationDisplay)
+                LabeledContent {
+                    Text(container.locationDisplay)
+                        .accessibilityIdentifier("container.locationValue")
+                } label: {
+                    Text("Location")
+                }
 
                 if let colorTitle = ContainerColorTag.title(for: container.colorTag) {
                     LabeledContent("Color Tag", value: colorTitle)
@@ -108,6 +113,7 @@ struct ContainerDetailView: View {
                 Button("Edit") {
                     isShowingEditContainer = true
                 }
+                .accessibilityIdentifier("container.edit")
             }
 
             ToolbarItem(placement: .topBarTrailing) {

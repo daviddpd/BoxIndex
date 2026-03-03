@@ -14,8 +14,61 @@ struct ExportPackage {
 }
 
 struct ImportSummary {
-    let containersImported: Int
-    let itemsImported: Int
+    let containersInserted: Int
+    let containersUpdated: Int
+    let containersKeptLocal: Int
+    let itemsInserted: Int
+    let itemsUpdated: Int
+    let itemsKeptLocal: Int
+    let orphanItemsSkipped: Int
+
+    var containersImported: Int {
+        containersInserted + containersUpdated
+    }
+
+    var itemsImported: Int {
+        itemsInserted + itemsUpdated
+    }
+
+    var statusMessage: String {
+        var parts: [String] = [
+            "Imported \(containersInserted) new containers",
+            "updated \(containersUpdated) containers",
+            "imported \(itemsInserted) new items",
+            "updated \(itemsUpdated) items",
+        ]
+
+        if containersKeptLocal > 0 {
+            parts.append("kept \(containersKeptLocal) newer local containers")
+        }
+
+        if itemsKeptLocal > 0 {
+            parts.append("kept \(itemsKeptLocal) newer local items")
+        }
+
+        if orphanItemsSkipped > 0 {
+            parts.append("skipped \(orphanItemsSkipped) orphan items")
+        }
+
+        return parts.joined(separator: ", ") + "."
+    }
+}
+
+enum ImportConflictResolution: String, Codable, CaseIterable, Identifiable {
+    case keepNewestRecord
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .keepNewestRecord:
+            return "Newest Record Wins"
+        }
+    }
+
+    func shouldApply(importedUpdatedAt: Date, existingUpdatedAt: Date) -> Bool {
+        importedUpdatedAt >= existingUpdatedAt
+    }
 }
 
 enum ExportImportError: LocalizedError {
@@ -39,8 +92,9 @@ enum ExportImportError: LocalizedError {
 final class ExportImportService {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+    private let conflictResolution: ImportConflictResolution
 
-    init() {
+    init(conflictResolution: ImportConflictResolution = .keepNewestRecord) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -49,6 +103,7 @@ final class ExportImportService {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         self.decoder = decoder
+        self.conflictResolution = conflictResolution
     }
 
     func buildExportPackage(from containers: [Container]) throws -> ExportPackage {
@@ -113,9 +168,17 @@ final class ExportImportService {
         let existingItems = try context.fetch(FetchDescriptor<ContainerItem>())
         var containerMap = Dictionary(uniqueKeysWithValues: existingContainers.map { ($0.id, $0) })
         var itemMap = Dictionary(uniqueKeysWithValues: existingItems.map { ($0.id, $0) })
+        var containersInserted = 0
+        var containersUpdated = 0
+        var containersKeptLocal = 0
+        var itemsInserted = 0
+        var itemsUpdated = 0
+        var itemsKeptLocal = 0
+        var orphanItemsSkipped = 0
 
         for record in bundle.containers {
-            let container = containerMap[record.id] ?? {
+            let existingContainer = containerMap[record.id]
+            let container = existingContainer ?? {
                 let newContainer = Container(
                     id: record.id,
                     name: record.name,
@@ -126,6 +189,20 @@ final class ExportImportService {
                 containerMap[record.id] = newContainer
                 return newContainer
             }()
+
+            if let existingContainer {
+                guard conflictResolution.shouldApply(
+                    importedUpdatedAt: record.updatedAt,
+                    existingUpdatedAt: existingContainer.updatedAt
+                ) else {
+                    containersKeptLocal += 1
+                    continue
+                }
+
+                containersUpdated += 1
+            } else {
+                containersInserted += 1
+            }
 
             container.name = record.name
             container.labelCode = record.labelCode
@@ -151,10 +228,12 @@ final class ExportImportService {
 
         for record in bundle.items {
             guard let container = containerMap[record.containerID] else {
+                orphanItemsSkipped += 1
                 continue
             }
 
-            let item = itemMap[record.id] ?? {
+            let existingItem = itemMap[record.id]
+            let item = existingItem ?? {
                 let newItem = ContainerItem(
                     id: record.id,
                     name: record.name
@@ -163,6 +242,20 @@ final class ExportImportService {
                 itemMap[record.id] = newItem
                 return newItem
             }()
+
+            if let existingItem {
+                guard conflictResolution.shouldApply(
+                    importedUpdatedAt: record.updatedAt,
+                    existingUpdatedAt: existingItem.updatedAt
+                ) else {
+                    itemsKeptLocal += 1
+                    continue
+                }
+
+                itemsUpdated += 1
+            } else {
+                itemsInserted += 1
+            }
 
             item.name = record.name
             item.quantity = record.quantity
@@ -178,8 +271,13 @@ final class ExportImportService {
         }
 
         return ImportSummary(
-            containersImported: bundle.containers.count,
-            itemsImported: bundle.items.count
+            containersInserted: containersInserted,
+            containersUpdated: containersUpdated,
+            containersKeptLocal: containersKeptLocal,
+            itemsInserted: itemsInserted,
+            itemsUpdated: itemsUpdated,
+            itemsKeptLocal: itemsKeptLocal,
+            orphanItemsSkipped: orphanItemsSkipped
         )
     }
 

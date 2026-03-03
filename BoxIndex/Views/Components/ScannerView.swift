@@ -16,6 +16,7 @@ enum ScannerPayload {
 struct ScannerView: UIViewControllerRepresentable {
     let recognizedDataTypes: Set<DataScannerViewController.RecognizedDataType>
     let onItemRecognized: (ScannerPayload) -> Void
+    var onStartFailure: ((String) -> Void)? = nil
 
     static var canScan: Bool {
         DataScannerViewController.isSupported && DataScannerViewController.isAvailable
@@ -34,7 +35,11 @@ struct ScannerView: UIViewControllerRepresentable {
         controller.delegate = context.coordinator
 
         DispatchQueue.main.async {
-            try? controller.startScanning()
+            do {
+                try controller.startScanning()
+            } catch {
+                onStartFailure?(error.localizedDescription)
+            }
         }
 
         return controller

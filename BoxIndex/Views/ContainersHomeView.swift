@@ -44,10 +44,10 @@ struct ContainersHomeView: View {
                 } else {
                     List {
                         ForEach(filteredContainers, id: \.id) { container in
-                        NavigationLink(value: HomeRoute.container(container.id)) {
-                            ContainerRowView(container: container)
-                        }
-                        .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
+                            NavigationLink(value: HomeRoute.container(container.id)) {
+                                ContainerRowView(container: container)
+                            }
+                            .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
                         }
                     }
                     .listStyle(.plain)
@@ -76,6 +76,7 @@ struct ContainersHomeView: View {
                     } label: {
                         Label("Add Container", systemImage: "plus")
                     }
+                    .accessibilityIdentifier("home.addContainer")
                 }
 
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -84,6 +85,7 @@ struct ContainersHomeView: View {
                     } label: {
                         Label("Scan QR", systemImage: "qrcode.viewfinder")
                     }
+                    .accessibilityIdentifier("home.scanQR")
 
                     Spacer()
 
@@ -92,6 +94,7 @@ struct ContainersHomeView: View {
                     } label: {
                         Label("Scan Label", systemImage: "text.viewfinder")
                     }
+                    .accessibilityIdentifier("home.scanLabel")
                 }
             }
             .sheet(isPresented: $isShowingAddContainer) {

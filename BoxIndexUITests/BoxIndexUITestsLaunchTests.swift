@@ -20,6 +20,7 @@ final class BoxIndexUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["UITEST_USE_IN_MEMORY_STORE"]
         app.launch()
 
         // Insert steps here to perform after app launch but before taking a screenshot,

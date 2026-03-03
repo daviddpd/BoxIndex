@@ -5,6 +5,7 @@
 //  Created by David P. Discher on 3/2/26.
 //
 
+import Foundation
 import Testing
 @testable import BoxIndex
 
@@ -26,6 +27,31 @@ struct BoxIndexTests {
         #expect(result.primary?.container.id == target.id)
         #expect(result.primary?.reason == .exactLabelCode)
         #expect(result.shouldAutoOpen)
+    }
+
+    @Test
+    func importConflictResolutionKeepsNewestRecord() {
+        let older = Date(timeIntervalSince1970: 1_000)
+        let newer = Date(timeIntervalSince1970: 2_000)
+
+        #expect(
+            ImportConflictResolution.keepNewestRecord.shouldApply(
+                importedUpdatedAt: newer,
+                existingUpdatedAt: older
+            )
+        )
+        #expect(
+            !ImportConflictResolution.keepNewestRecord.shouldApply(
+                importedUpdatedAt: older,
+                existingUpdatedAt: newer
+            )
+        )
+    }
+
+    @Test
+    func migrationPlanExposesCurrentSchema() {
+        #expect(BoxIndexMigrationPlan.schemas.count == 1)
+        #expect(BoxIndexSchemaV1.models.count == 3)
     }
 
 }

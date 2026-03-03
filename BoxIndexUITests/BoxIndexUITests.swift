@@ -10,32 +10,104 @@ import XCTest
 final class BoxIndexUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
+    func testCreateSearchEditAndSaveContainer() throws {
+        let app = makeApp()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        app.buttons["home.addContainer"].tap()
+
+        let nameField = app.textFields["container.name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 2))
+        nameField.tap()
+        nameField.typeText("Attic Bin 12")
+
+        let labelField = app.textFields["container.labelCode"]
+        labelField.tap()
+        labelField.typeText("AB-012")
+
+        let locationField = app.textFields["container.location"]
+        locationField.tap()
+        locationField.typeText("Attic")
+
+        app.buttons["container.save"].tap()
+
+        let createdRow = app.buttons["Attic Bin 12, AB-012"]
+        XCTAssertTrue(createdRow.waitForExistence(timeout: 2))
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 2))
+        searchField.tap()
+        searchField.typeText("AB-012")
+
+        createdRow.tap()
+
+        app.buttons["container.edit"].tap()
+
+        let subLocationField = app.textFields["container.subLocation"]
+        XCTAssertTrue(subLocationField.waitForExistence(timeout: 2))
+        subLocationField.tap()
+        subLocationField.typeText("Rear Rack")
+
+        app.buttons["container.save"].tap()
+
+        let locationValue = app.staticTexts["container.locationValue"]
+        XCTAssertTrue(locationValue.waitForExistence(timeout: 2))
+        XCTAssertEqual(locationValue.label, "Attic • Rear Rack")
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+    func testExportFlowShowsPreparedStatusInUITestMode() throws {
+        let app = makeApp(seedDemoData: true)
+        app.launch()
+
+        app.tabBars.buttons["Backup"].tap()
+        app.buttons["Export BoxIndex Data"].tap()
+
+        let preparedMessage = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Prepared ")).firstMatch
+        XCTAssertTrue(preparedMessage.waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testScanQRScreenLoadsOnSupportedHardware() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("Live QR scanner smoke tests require supported iPhone hardware.")
+        #else
+        let app = makeApp(seedDemoData: true)
+        app.launch()
+
+        app.buttons["Scan QR"].tap()
+        XCTAssertTrue(app.navigationBars["Scan QR"].buttons["Close"].waitForExistence(timeout: 2))
+        #endif
+    }
+
+    @MainActor
+    func testScanLabelScreenLoadsOnSupportedHardware() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("Live label scanner smoke tests require supported iPhone hardware.")
+        #else
+        let app = makeApp(seedDemoData: true)
+        app.launch()
+
+        app.buttons["Scan Label"].tap()
+        XCTAssertTrue(app.navigationBars["Scan Label"].buttons["Close"].waitForExistence(timeout: 2))
+        #endif
+    }
+
+    private func makeApp(seedDemoData: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "UITEST_USE_IN_MEMORY_STORE",
+            "UITEST_DISABLE_DOCUMENT_PICKERS",
+        ]
+
+        if seedDemoData {
+            app.launchArguments.append("UITEST_SEED_DEMO_DATA")
         }
+
+        return app
     }
 }

@@ -31,6 +31,7 @@ struct BackupView: View {
                     } label: {
                         Label("Export BoxIndex Data", systemImage: "square.and.arrow.up")
                     }
+                    .accessibilityIdentifier("backup.export")
                     .disabled(containers.isEmpty)
 
                     Button {
@@ -38,8 +39,9 @@ struct BackupView: View {
                     } label: {
                         Label("Import Prior Export", systemImage: "square.and.arrow.down")
                     }
+                    .accessibilityIdentifier("backup.import")
 
-                    Text("Exports are local, versioned, and open. BoxIndex writes `containers.json`, `items.json`, CSV copies, and an optional `attachments` folder into a shareable export bundle.")
+                    Text("Exports are local, versioned, and open. BoxIndex writes `containers.json`, `items.json`, CSV copies, and an optional `attachments` folder into a shareable export bundle. On import conflicts, BoxIndex compares `updatedAt` and keeps the newer record.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -111,7 +113,12 @@ struct BackupView: View {
             let package = try exportService.buildExportPackage(from: containers)
             exportDirectoryURL = package.directoryURL
             statusMessage = "Prepared \(package.displayName). Choose a destination in Files to save the export."
-            isShowingExporter = true
+
+            if LaunchConfiguration.disableDocumentPickers {
+                isShowingExporter = false
+            } else {
+                isShowingExporter = true
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -125,7 +132,7 @@ struct BackupView: View {
             }
             do {
                 let summary = try exportService.importArchive(from: url, into: modelContext)
-                statusMessage = "Imported \(summary.containersImported) containers and \(summary.itemsImported) items."
+                statusMessage = summary.statusMessage
                 reloadData()
             } catch {
                 errorMessage = error.localizedDescription
