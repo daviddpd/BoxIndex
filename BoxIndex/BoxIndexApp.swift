@@ -5,19 +5,21 @@
 //  Created by David P. Discher on 3/2/26.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct BoxIndexApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    private let sharedModelContainer: ModelContainer = {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(
+                for: Container.self,
+                ContainerItem.self,
+                AppSettings.self,
+                configurations: configuration
+            )
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
