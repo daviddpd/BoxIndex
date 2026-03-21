@@ -69,6 +69,9 @@ struct ContainersHomeView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                bottomActionBar
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -77,24 +80,6 @@ struct ContainersHomeView: View {
                         Label("Add Container", systemImage: "plus")
                     }
                     .accessibilityIdentifier("home.addContainer")
-                }
-
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Button {
-                        isShowingQRScanner = true
-                    } label: {
-                        Label("Scan QR", systemImage: "qrcode.viewfinder")
-                    }
-                    .accessibilityIdentifier("home.scanQR")
-
-                    Spacer()
-
-                    Button {
-                        isShowingLabelScanner = true
-                    } label: {
-                        Label("Scan Label", systemImage: "text.viewfinder")
-                    }
-                    .accessibilityIdentifier("home.scanLabel")
                 }
             }
             .sheet(isPresented: $isShowingAddContainer) {
@@ -148,5 +133,31 @@ struct ContainersHomeView: View {
             sortBy: [SortDescriptor(\Container.updatedAt, order: .reverse)]
         )
         containers = (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    private var bottomActionBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                isShowingQRScanner = true
+            } label: {
+                Label("Scan QR", systemImage: "qrcode.viewfinder")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("home.scanQR")
+
+            Button {
+                isShowingLabelScanner = true
+            } label: {
+                Label("Scan Label", systemImage: "text.viewfinder")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("home.scanLabel")
+        }
+        .padding(.horizontal)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(.regularMaterial)
     }
 }
