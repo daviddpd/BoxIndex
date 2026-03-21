@@ -28,29 +28,33 @@ struct ContainersHomeView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            Group {
-                if containers.isEmpty && searchText.trimmed.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Containers Yet", systemImage: "shippingbox")
-                    } description: {
-                        Text("Add a box, bin, tote, or shelf so you can quickly find it later.")
-                    } actions: {
-                        Button("Add Your First Container") {
-                            isShowingAddContainer = true
-                        }
-                    }
-                } else if filteredContainers.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
-                } else {
-                    List {
-                        ForEach(filteredContainers, id: \.id) { container in
-                            NavigationLink(value: HomeRoute.container(container.id)) {
-                                ContainerRowView(container: container)
+            VStack(spacing: 0) {
+                topActionBar
+
+                Group {
+                    if containers.isEmpty && searchText.trimmed.isEmpty {
+                        ContentUnavailableView {
+                            Label("No Containers Yet", systemImage: "shippingbox")
+                        } description: {
+                            Text("Add a box, bin, tote, or shelf so you can quickly find it later.")
+                        } actions: {
+                            Button("Add Your First Container") {
+                                isShowingAddContainer = true
                             }
-                            .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
                         }
+                    } else if filteredContainers.isEmpty {
+                        ContentUnavailableView.search(text: searchText)
+                    } else {
+                        List {
+                            ForEach(filteredContainers, id: \.id) { container in
+                                NavigationLink(value: HomeRoute.container(container.id)) {
+                                    ContainerRowView(container: container)
+                                }
+                                .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
+                            }
+                        }
+                        .listStyle(.plain)
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("BoxIndex")
@@ -68,9 +72,6 @@ struct ContainersHomeView: View {
                         )
                     }
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                bottomActionBar
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -135,7 +136,7 @@ struct ContainersHomeView: View {
         containers = (try? modelContext.fetch(descriptor)) ?? []
     }
 
-    private var bottomActionBar: some View {
+    private var topActionBar: some View {
         HStack(spacing: 12) {
             Button {
                 isShowingQRScanner = true
@@ -156,8 +157,11 @@ struct ContainersHomeView: View {
             .accessibilityIdentifier("home.scanLabel")
         }
         .padding(.horizontal)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(.regularMaterial)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(Color(uiColor: .systemBackground))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
     }
 }
