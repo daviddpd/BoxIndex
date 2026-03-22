@@ -20,8 +20,6 @@ enum TextRecognitionService {
         request.automaticallyDetectsLanguage = false
         request.recognitionLanguages = [Locale.Language(identifier: "en-US")]
         request.usesLanguageCorrection = false
-        request.minimumTextHeightFraction = 0.5
-
         
         let observations = try await request.perform(
             on: cgImage,

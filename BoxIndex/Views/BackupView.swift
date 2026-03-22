@@ -65,7 +65,7 @@ struct BackupView: View {
                 }
 
                 Section("Local-First") {
-                    Text("All data is stored on-device by default. The iCloud toggle below only stores your preference in this MVP, so the app remains local-first until a future CloudKit-backed sync layer is added.")
+                    Text("All data stays on-device. Export and import are the current backup path, and BoxIndex does not require an account or cloud service.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -173,17 +173,6 @@ private struct BackupPreferencesSection: View {
     let saveChanges: () -> Void
 
     var body: some View {
-        Toggle(
-            "Enable iCloud Sync (Planned)",
-            isOn: Binding(
-                get: { settings.isICloudSyncEnabled },
-                set: { newValue in
-                    settings.isICloudSyncEnabled = newValue
-                    saveChanges()
-                }
-            )
-        )
-
         TextField(
             "Default Location",
             text: Binding(

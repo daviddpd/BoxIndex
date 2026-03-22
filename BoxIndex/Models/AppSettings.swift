@@ -27,6 +27,7 @@ enum ExportFormatPreference: String, CaseIterable, Codable, Identifiable {
 @Model
 final class AppSettings {
     @Attribute(.unique) var id: UUID
+    // Retained for store compatibility after removing the iCloud placeholder UI.
     var isICloudSyncEnabled: Bool
     var defaultLocation: String
     var preferredExportFormatRawValue: String
