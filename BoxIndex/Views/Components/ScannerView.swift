@@ -36,6 +36,9 @@ struct ScannerView: UIViewControllerRepresentable {
 
         return ScannerContainerViewController(
             scannerController: scannerController,
+            onRecognizedItems: { items in
+                context.coordinator.forward(items: items)
+            },
             onStartFailure: onStartFailure
         )
     }
@@ -60,21 +63,12 @@ struct ScannerView: UIViewControllerRepresentable {
 
         func dataScanner(
             _ dataScanner: DataScannerViewController,
-            didAdd addedItems: [RecognizedItem],
-            allItems: [RecognizedItem]
+            becameUnavailableWithError error: DataScannerViewController.ScanningUnavailable
         ) {
-            forward(items: addedItems)
+            parent.onStartFailure?(error.localizedDescription)
         }
 
-        func dataScanner(
-            _ dataScanner: DataScannerViewController,
-            didUpdate updatedItems: [RecognizedItem],
-            allItems: [RecognizedItem]
-        ) {
-            forward(items: updatedItems)
-        }
-
-        private func forward(items: [RecognizedItem]) {
+        fileprivate func forward(items: [RecognizedItem]) {
             for item in items {
                 switch item {
                 case .text(let text):
@@ -93,14 +87,18 @@ struct ScannerView: UIViewControllerRepresentable {
 
 final class ScannerContainerViewController: UIViewController {
     private let scannerController: DataScannerViewController
+    private let onRecognizedItems: ([RecognizedItem]) -> Void
     private let onStartFailure: ((String) -> Void)?
     private var hasStartedScanning = false
+    private var recognizedItemsTask: Task<Void, Never>?
 
     init(
         scannerController: DataScannerViewController,
+        onRecognizedItems: @escaping ([RecognizedItem]) -> Void,
         onStartFailure: ((String) -> Void)?
     ) {
         self.scannerController = scannerController
+        self.onRecognizedItems = onRecognizedItems
         self.onStartFailure = onStartFailure
         super.init(nibName: nil, bundle: nil)
     }
@@ -135,6 +133,7 @@ final class ScannerContainerViewController: UIViewController {
         do {
             try scannerController.startScanning()
             hasStartedScanning = true
+            startListeningForRecognizedItems()
         } catch {
             onStartFailure?(error.localizedDescription)
         }
@@ -146,11 +145,31 @@ final class ScannerContainerViewController: UIViewController {
     }
 
     func stopScanningIfNeeded() {
+        recognizedItemsTask?.cancel()
+        recognizedItemsTask = nil
+
         guard hasStartedScanning else {
             return
         }
 
         scannerController.stopScanning()
         hasStartedScanning = false
+    }
+
+    private func startListeningForRecognizedItems() {
+        recognizedItemsTask?.cancel()
+        recognizedItemsTask = Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            for await items in scannerController.recognizedItems {
+                guard !Task.isCancelled else {
+                    break
+                }
+
+                onRecognizedItems(items)
+            }
+        }
     }
 }

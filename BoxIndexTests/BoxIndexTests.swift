@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+import UIKit
 @testable import BoxIndex
 
 struct BoxIndexTests {
@@ -52,6 +53,16 @@ struct BoxIndexTests {
     func migrationPlanExposesCurrentSchema() {
         #expect(BoxIndexMigrationPlan.schemas.count == 1)
         #expect(BoxIndexSchemaV1.models.count == 3)
+    }
+
+    @Test
+    func detectPayloadsReadsGeneratedQRCodeImage() async throws {
+        let payload = "BOXINDEX:550E8400-E29B-41D4-A716-446655440000"
+        let image = try #require(QRCodeService.image(for: payload, size: 400))
+
+        let detectedPayloads = try await QRCodeService.detectPayloads(in: image)
+
+        #expect(detectedPayloads.contains(payload))
     }
 
 }

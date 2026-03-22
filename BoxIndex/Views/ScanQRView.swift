@@ -22,6 +22,9 @@ struct ScanQRView: View {
     @State private var statusMessage = "Point the camera at a BoxIndex QR code."
     @State private var lastProcessedPayload = ""
     @State private var manualPayload = ""
+    @State private var showingCameraCapture = false
+    @State private var isProcessingImageBarcode = false
+    @State private var errorMessage: String?
 
     private var canUseLiveScanner: Bool {
         cameraAuthorizationState == .authorized && ScannerView.canScan
@@ -89,6 +92,11 @@ struct ScanQRView: View {
                     Text(statusMessage)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    if isProcessingImageBarcode {
+                        ProgressView("Scanning photo…")
+                            .font(.footnote)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -106,9 +114,47 @@ struct ScanQRView: View {
                     }
                 }
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingCameraCapture = true
+                } label: {
+                    Label("Photo QR", systemImage: "camera")
+                }
+            }
         }
         .task {
             cameraAuthorizationState = await CameraAuthorizationService.requestAccessIfNeeded()
+        }
+        .sheet(isPresented: $showingCameraCapture) {
+            CameraCaptureView(
+                onImagePicked: { image in
+                    showingCameraCapture = false
+                    Task {
+                        await runPhotoBarcodeScan(on: image)
+                    }
+                },
+                onCancel: {
+                    showingCameraCapture = false
+                }
+            )
+        }
+        .alert(
+            "Scan Error",
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        errorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
@@ -146,6 +192,28 @@ struct ScanQRView: View {
 
         statusMessage = "Opening \(container.displayTitle)…"
         onMatch(container)
+    }
+
+    private func runPhotoBarcodeScan(on image: UIImage) async {
+        isProcessingImageBarcode = true
+        defer { isProcessingImageBarcode = false }
+
+        do {
+            let payloads = try await QRCodeService.detectPayloads(in: image)
+
+            guard let firstPayload = payloads.first else {
+                statusMessage = "No QR code found in that image."
+                return
+            }
+
+            if let boxIndexPayload = payloads.first(where: { QRCodeService.extractContainerID(from: $0) != nil }) {
+                handlePayloadValue(boxIndexPayload)
+            } else {
+                handlePayloadValue(firstPayload)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private var fallbackStateCard: some View {
@@ -192,11 +260,11 @@ struct ScanQRView: View {
     private var fallbackDescription: String {
         switch cameraAuthorizationState {
         case .denied, .restricted:
-            return "Enable camera access in Settings to scan QR codes live. You can still paste a BoxIndex QR payload, UUID, or `boxindex://` link below."
+            return "Enable camera access in Settings to scan QR codes live. You can still paste a BoxIndex QR payload, UUID, or `boxindex://` link below, or scan one from a photo."
         case .authorized:
-            return "Live QR scanning needs supported iPhone hardware. This fallback still lets you paste a BoxIndex QR payload or container ID directly."
+            return "Live QR scanning needs supported iPhone hardware. You can still paste a BoxIndex QR payload or container ID directly, or scan one from a photo."
         case .unavailable:
-            return "This device does not expose a usable camera. Paste a BoxIndex QR payload or container ID below."
+            return "This device does not expose a usable camera. Paste a BoxIndex QR payload or container ID below, or scan one from a photo."
         case .notDetermined:
             return "BoxIndex is checking camera access."
         }

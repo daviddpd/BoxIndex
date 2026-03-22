@@ -8,6 +8,7 @@
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import UIKit
+import Vision
 
 enum QRCodeService {
     static let prefix = "BOXINDEX:"
@@ -57,5 +58,24 @@ enum QRCodeService {
         }
 
         return nil
+    }
+
+    static func detectPayloads(in image: UIImage) async throws -> [String] {
+        guard let cgImage = image.cgImage else {
+            return []
+        }
+
+        var request = DetectBarcodesRequest()
+        request.symbologies = [.qr]
+
+        let observations = try await request.perform(
+            on: cgImage,
+            orientation: image.cgImagePropertyOrientation
+        )
+
+        return observations
+            .compactMap(\.payloadString)
+            .map(\.trimmed)
+            .filter { !$0.isEmpty }
     }
 }

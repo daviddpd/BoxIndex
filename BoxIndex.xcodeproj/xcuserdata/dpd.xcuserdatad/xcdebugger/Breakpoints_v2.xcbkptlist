@@ -20,5 +20,51 @@
             landmarkType = "13">
          </BreakpointContent>
       </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "40B9FD76-F0D3-4512-8126-B78596875C5A"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "BoxIndex/Services/TextRecognitionService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "13"
+            endingLineNumber = "13"
+            landmarkName = "recognizeText(in:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "40B9FD76-F0D3-4512-8126-B78596875C5A - c5fdffb685641fef"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "static BoxIndex.TextRecognitionService.recognizeText(in: __C.UIImage) async throws -&gt; Swift.Array&lt;Swift.String&gt;"
+                  moduleName = "BoxIndex.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/dpd/Documents/projects/github/BoxIndex/BoxIndex/Services/TextRecognitionService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "13"
+                  endingLineNumber = "13">
+               </Location>
+               <Location
+                  uuid = "40B9FD76-F0D3-4512-8126-B78596875C5A - 7ea4921a4b3cc806"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for static BoxIndex.TextRecognitionService.recognizeText(in: __C.UIImage) async throws -&gt; Swift.Array&lt;Swift.String&gt;"
+                  moduleName = "BoxIndex.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/dpd/Documents/projects/github/BoxIndex/BoxIndex/Services/TextRecognitionService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "13"
+                  endingLineNumber = "13">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>
