@@ -14,6 +14,7 @@ struct ScanQRView: View {
     @Environment(\.openURL) private var openURL
 
     let containers: [Container]
+    var showsCloseButton = true
     let onMatch: (Container) -> Void
 
     @State private var cameraAuthorizationState: CameraAuthorizationState = .notDetermined
@@ -98,9 +99,11 @@ struct ScanQRView: View {
         .navigationTitle("Scan QR")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
-                    dismiss()
+            if showsCloseButton {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
                 }
             }
         }

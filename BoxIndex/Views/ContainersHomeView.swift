@@ -15,12 +15,10 @@ private enum HomeRoute: Hashable {
 struct ContainersHomeView: View {
     @Environment(\.modelContext) private var modelContext
 
+    @Binding var searchText: String
     @State private var containers: [Container] = []
     @State private var navigationPath: [HomeRoute] = []
-    @State private var searchText = ""
     @State private var isShowingAddContainer = false
-    @State private var isShowingQRScanner = false
-    @State private var isShowingLabelScanner = false
 
     private var filteredContainers: [Container] {
         SearchService.search(query: searchText, in: containers)
@@ -28,33 +26,29 @@ struct ContainersHomeView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                topActionBar
-
-                Group {
-                    if containers.isEmpty && searchText.trimmed.isEmpty {
-                        ContentUnavailableView {
-                            Label("No Containers Yet", systemImage: "shippingbox")
-                        } description: {
-                            Text("Add a box, bin, tote, or shelf so you can quickly find it later.")
-                        } actions: {
-                            Button("Add Your First Container") {
-                                isShowingAddContainer = true
-                            }
+            Group {
+                if containers.isEmpty && searchText.trimmed.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Containers Yet", systemImage: "shippingbox")
+                    } description: {
+                        Text("Add a box, bin, tote, or shelf so you can quickly find it later.")
+                    } actions: {
+                        Button("Add Your First Container") {
+                            isShowingAddContainer = true
                         }
-                    } else if filteredContainers.isEmpty {
-                        ContentUnavailableView.search(text: searchText)
-                    } else {
-                        List {
-                            ForEach(filteredContainers, id: \.id) { container in
-                                NavigationLink(value: HomeRoute.container(container.id)) {
-                                    ContainerRowView(container: container)
-                                }
-                                .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
-                            }
-                        }
-                        .listStyle(.plain)
                     }
+                } else if filteredContainers.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    List {
+                        ForEach(filteredContainers, id: \.id) { container in
+                            NavigationLink(value: HomeRoute.container(container.id)) {
+                                ContainerRowView(container: container)
+                            }
+                            .accessibilityLabel("\(container.displayTitle), \(container.labelCode)")
+                        }
+                    }
+                    .listStyle(.plain)
                 }
             }
             .navigationTitle("BoxIndex")
@@ -88,27 +82,6 @@ struct ContainersHomeView: View {
                     ContainerEditorView()
                 }
             }
-            .sheet(isPresented: $isShowingQRScanner) {
-                NavigationStack {
-                    ScanQRView(containers: containers) { container in
-                        open(container)
-                    }
-                }
-            }
-            .sheet(isPresented: $isShowingLabelScanner) {
-                NavigationStack {
-                    ScanLabelView(
-                        containers: containers,
-                        openContainer: { container in
-                            open(container)
-                        },
-                        prefillSearch: { recognizedText in
-                            searchText = recognizedText
-                            isShowingLabelScanner = false
-                        }
-                    )
-                }
-            }
             .task {
                 reloadContainers()
             }
@@ -120,48 +93,10 @@ struct ContainersHomeView: View {
         }
     }
 
-    private func open(_ container: Container) {
-        isShowingQRScanner = false
-        isShowingLabelScanner = false
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            navigationPath.append(.container(container.id))
-        }
-    }
-
     private func reloadContainers() {
         let descriptor = FetchDescriptor<Container>(
             sortBy: [SortDescriptor(\Container.updatedAt, order: .reverse)]
         )
         containers = (try? modelContext.fetch(descriptor)) ?? []
-    }
-
-    private var topActionBar: some View {
-        HStack(spacing: 12) {
-            Button {
-                isShowingQRScanner = true
-            } label: {
-                Label("Scan QR", systemImage: "qrcode.viewfinder")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("home.scanQR")
-
-            Button {
-                isShowingLabelScanner = true
-            } label: {
-                Label("Scan Label", systemImage: "text.viewfinder")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier("home.scanLabel")
-        }
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
-        .background(Color(uiColor: .systemBackground))
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
     }
 }

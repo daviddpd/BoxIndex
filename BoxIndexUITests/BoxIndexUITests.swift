@@ -79,8 +79,9 @@ final class BoxIndexUITests: XCTestCase {
         let app = makeApp(seedDemoData: true)
         app.launch()
 
-        app.buttons["Scan QR"].tap()
-        XCTAssertTrue(app.navigationBars["Scan QR"].buttons["Close"].waitForExistence(timeout: 2))
+        app.tabBars.buttons["QR"].tap()
+        XCTAssertTrue(app.navigationBars["Scan QR"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["Open Code"].waitForExistence(timeout: 2))
         #endif
     }
 
@@ -92,8 +93,9 @@ final class BoxIndexUITests: XCTestCase {
         let app = makeApp(seedDemoData: true)
         app.launch()
 
-        app.buttons["Scan Label"].tap()
-        XCTAssertTrue(app.navigationBars["Scan Label"].buttons["Close"].waitForExistence(timeout: 2))
+        app.tabBars.buttons["Label"].tap()
+        XCTAssertTrue(app.navigationBars["Scan Label"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["Match Label"].waitForExistence(timeout: 2))
         #endif
     }
 

@@ -14,6 +14,7 @@ struct ScanLabelView: View {
     @Environment(\.openURL) private var openURL
 
     let containers: [Container]
+    var showsCloseButton = true
     let openContainer: (Container) -> Void
     let prefillSearch: (String) -> Void
 
@@ -180,9 +181,11 @@ struct ScanLabelView: View {
             cameraAuthorizationState = await CameraAuthorizationService.requestAccessIfNeeded()
         }
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
-                    dismiss()
+            if showsCloseButton {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
                 }
             }
 
