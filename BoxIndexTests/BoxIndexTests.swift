@@ -65,4 +65,37 @@ struct BoxIndexTests {
         #expect(detectedPayloads.contains(payload))
     }
 
+    @Test
+    @MainActor
+    func qrLabelSheetPDFStartsWithPDFHeader() throws {
+        let service = QRLabelOutputService()
+        let container = Container(name: "Garage Bin 04", labelCode: "GB-004", location: "Garage", colorTag: "blue")
+
+        let pdfData = try service.sheetPDFData(for: [container], options: QRLabelOutputOptions())
+
+        #expect(String(decoding: pdfData.prefix(4), as: UTF8.self) == "%PDF")
+    }
+
+    @Test
+    @MainActor
+    func qrLabelExportPackageContainsManifestSheetAndPNG() throws {
+        let service = QRLabelOutputService()
+        let container = Container(name: "Holiday Decor", labelCode: "HD-001", location: "Closet", colorTag: "coral")
+
+        let package = try service.buildExportPackage(from: [container], options: QRLabelOutputOptions())
+        defer {
+            try? FileManager.default.removeItem(at: package.directoryURL)
+        }
+
+        let manifestURL = package.directoryURL.appendingPathComponent("qr-label-export.json")
+        let sheetURL = package.directoryURL.appendingPathComponent("sheet-letter-twoByTwo.pdf")
+        let imagesURL = package.directoryURL.appendingPathComponent("individual", isDirectory: true)
+        let imageFiles = try FileManager.default.contentsOfDirectory(at: imagesURL, includingPropertiesForKeys: nil)
+
+        #expect(FileManager.default.fileExists(atPath: manifestURL.path))
+        #expect(FileManager.default.fileExists(atPath: sheetURL.path))
+        #expect(imageFiles.count == 1)
+        #expect(imageFiles.first?.pathExtension.lowercased() == "png")
+    }
+
 }

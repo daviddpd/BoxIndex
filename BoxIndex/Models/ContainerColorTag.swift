@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 enum ContainerColorTag: String, CaseIterable, Identifiable {
     case slate
@@ -32,17 +33,21 @@ enum ContainerColorTag: String, CaseIterable, Identifiable {
     }
 
     var color: Color {
+        Color(uiColor: uiColor)
+    }
+
+    var uiColor: UIColor {
         switch self {
         case .slate:
-            return Color(red: 0.36, green: 0.42, blue: 0.50)
+            return UIColor(red: 0.36, green: 0.42, blue: 0.50, alpha: 1)
         case .blue:
-            return Color(red: 0.16, green: 0.48, blue: 0.82)
+            return UIColor(red: 0.16, green: 0.48, blue: 0.82, alpha: 1)
         case .green:
-            return Color(red: 0.18, green: 0.58, blue: 0.39)
+            return UIColor(red: 0.18, green: 0.58, blue: 0.39, alpha: 1)
         case .amber:
-            return Color(red: 0.88, green: 0.56, blue: 0.12)
+            return UIColor(red: 0.88, green: 0.56, blue: 0.12, alpha: 1)
         case .coral:
-            return Color(red: 0.82, green: 0.34, blue: 0.29)
+            return UIColor(red: 0.82, green: 0.34, blue: 0.29, alpha: 1)
         }
     }
 
@@ -52,6 +57,14 @@ enum ContainerColorTag: String, CaseIterable, Identifiable {
         }
 
         return ContainerColorTag(rawValue: rawValue)?.color
+    }
+
+    static func uiColor(for rawValue: String?) -> UIColor? {
+        guard let rawValue else {
+            return nil
+        }
+
+        return ContainerColorTag(rawValue: rawValue)?.uiColor
     }
 
     static func title(for rawValue: String?) -> String? {

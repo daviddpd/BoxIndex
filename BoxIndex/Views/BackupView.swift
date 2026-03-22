@@ -25,6 +25,22 @@ struct BackupView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("QR Labels") {
+                    NavigationLink {
+                        QRLabelOutputView(
+                            containers: containers,
+                            navigationTitle: "QR Labels"
+                        )
+                    } label: {
+                        Label("Print or Export QR Codes", systemImage: "printer")
+                    }
+                    .disabled(containers.isEmpty)
+
+                    Text("Export includes individual PNG files, a printable PDF sheet in the selected grid, and a manifest for later template-based label workflows.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Export & Import") {
                     Button {
                         prepareExport()

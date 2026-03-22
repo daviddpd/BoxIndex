@@ -104,6 +104,22 @@ struct ContainerDetailView: View {
             Section("QR Code") {
                 QRCodePreviewView(container: container)
                     .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+
+                NavigationLink {
+                    QRLabelOutputView(
+                        containers: [container],
+                        navigationTitle: "QR Label",
+                        initialOptions: QRLabelOutputOptions(
+                            template: QRLabelTemplateDescriptor(
+                                kind: .flexibleGrid,
+                                pageSize: .letter,
+                                grid: .oneByOne
+                            )
+                        )
+                    )
+                } label: {
+                    Label("Print or Export QR", systemImage: "printer")
+                }
             }
         }
         .navigationTitle(container.displayTitle)
