@@ -19,9 +19,15 @@ struct ContainersHomeView: View {
     @State private var containers: [Container] = []
     @State private var navigationPath: [HomeRoute] = []
     @State private var isShowingAddContainer = false
+    @State private var isShowingQROutput = false
 
     private var filteredContainers: [Container] {
         SearchService.search(query: searchText, in: containers)
+    }
+
+    private var qrOutputSelectionIDs: Set<UUID> {
+        let preferredContainers = filteredContainers.isEmpty ? containers : filteredContainers
+        return Set(preferredContainers.map(\.id))
     }
 
     var body: some View {
@@ -68,6 +74,16 @@ struct ContainersHomeView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isShowingQROutput = true
+                    } label: {
+                        Label("QR Output", systemImage: "printer")
+                    }
+                    .disabled(containers.isEmpty)
+                    .accessibilityIdentifier("home.qrOutput")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isShowingAddContainer = true
@@ -80,6 +96,15 @@ struct ContainersHomeView: View {
             .sheet(isPresented: $isShowingAddContainer) {
                 NavigationStack {
                     ContainerEditorView()
+                }
+            }
+            .sheet(isPresented: $isShowingQROutput) {
+                NavigationStack {
+                    QRLabelOutputView(
+                        availableContainers: containers,
+                        initialSelectionIDs: qrOutputSelectionIDs,
+                        navigationTitle: "QR Output"
+                    )
                 }
             }
             .task {

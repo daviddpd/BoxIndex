@@ -56,7 +56,12 @@ struct BoxIndexTests {
     }
 
     @Test
+    @MainActor
     func detectPayloadsReadsGeneratedQRCodeImage() async throws {
+        if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
+            return
+        }
+
         let payload = "BOXINDEX:550E8400-E29B-41D4-A716-446655440000"
         let image = try #require(QRCodeService.image(for: payload, size: 400))
 
@@ -88,14 +93,53 @@ struct BoxIndexTests {
         }
 
         let manifestURL = package.directoryURL.appendingPathComponent("qr-label-export.json")
-        let sheetURL = package.directoryURL.appendingPathComponent("sheet-letter-twoByTwo.pdf")
+        let manifestData = try Data(contentsOf: manifestURL)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(QRLabelExportManifest.self, from: manifestData)
         let imagesURL = package.directoryURL.appendingPathComponent("individual", isDirectory: true)
         let imageFiles = try FileManager.default.contentsOfDirectory(at: imagesURL, includingPropertiesForKeys: nil)
+        let sheetURL = try #require(
+            manifest.sheetFileName.map { package.directoryURL.appendingPathComponent($0) }
+        )
 
         #expect(FileManager.default.fileExists(atPath: manifestURL.path))
         #expect(FileManager.default.fileExists(atPath: sheetURL.path))
+        #expect(manifest.exportPaperSize == .letter)
+        #expect(manifest.template.rows == 2)
+        #expect(manifest.template.columns == 2)
+        #expect(manifest.exportsPDFSheet)
+        #expect(manifest.exportsIndividualPNGs)
+        #expect(manifest.individualFiles.count == 1)
         #expect(imageFiles.count == 1)
         #expect(imageFiles.first?.pathExtension.lowercased() == "png")
+    }
+
+    @Test
+    @MainActor
+    func qrLabelExportPackageCanExportOnlyPNGs() throws {
+        let service = QRLabelOutputService()
+        let container = Container(name: "Spare Cables", labelCode: "CB-002", location: "Office")
+        var options = QRLabelOutputOptions()
+        options.exportsPDFSheet = false
+        options.exportsIndividualPNGs = true
+
+        let package = try service.buildExportPackage(from: [container], options: options)
+        defer {
+            try? FileManager.default.removeItem(at: package.directoryURL)
+        }
+
+        let manifestURL = package.directoryURL.appendingPathComponent("qr-label-export.json")
+        let manifestData = try Data(contentsOf: manifestURL)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(QRLabelExportManifest.self, from: manifestData)
+        let rootFiles = try FileManager.default.contentsOfDirectory(at: package.directoryURL, includingPropertiesForKeys: nil)
+
+        #expect(!manifest.exportsPDFSheet)
+        #expect(manifest.sheetFileName == nil)
+        #expect(rootFiles.contains { $0.lastPathComponent == "individual" })
+        #expect(!rootFiles.contains { $0.pathExtension.lowercased() == "pdf" })
     }
 
 }

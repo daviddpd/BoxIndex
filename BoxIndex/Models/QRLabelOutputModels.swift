@@ -44,51 +44,6 @@ enum QRLabelPageSize: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum QRLabelGridPreset: String, CaseIterable, Codable, Identifiable {
-    case oneByOne
-    case twoByTwo
-    case threeBySix
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .oneByOne:
-            return "1×1"
-        case .twoByTwo:
-            return "2×2"
-        case .threeBySix:
-            return "3×6"
-        }
-    }
-
-    var columns: Int {
-        switch self {
-        case .oneByOne:
-            return 1
-        case .twoByTwo:
-            return 2
-        case .threeBySix:
-            return 3
-        }
-    }
-
-    var rows: Int {
-        switch self {
-        case .oneByOne:
-            return 1
-        case .twoByTwo:
-            return 2
-        case .threeBySix:
-            return 6
-        }
-    }
-
-    var itemsPerPage: Int {
-        columns * rows
-    }
-}
-
 enum QRLabelExportPackaging: String, CaseIterable, Codable, Identifiable {
     case folder
     case bundle
@@ -133,8 +88,12 @@ enum QRLabelIndividualAssetFormat: String, CaseIterable, Codable, Identifiable {
 
 struct QRLabelTemplateDescriptor: Codable, Hashable {
     var kind: QRLabelTemplateKind = .flexibleGrid
-    var pageSize: QRLabelPageSize = .letter
-    var grid: QRLabelGridPreset = .twoByTwo
+    var rows = 2
+    var columns = 2
+
+    var itemsPerPage: Int {
+        rows * columns
+    }
 }
 
 struct QRLabelOutputOptions: Codable, Hashable {
@@ -144,6 +103,13 @@ struct QRLabelOutputOptions: Codable, Hashable {
     var useColorAccent = true
     var packaging: QRLabelExportPackaging = .folder
     var individualAssetFormat: QRLabelIndividualAssetFormat = .png
+    var exportPaperSize: QRLabelPageSize = .letter
+    var exportsPDFSheet = true
+    var exportsIndividualPNGs = true
+
+    var hasExportSelection: Bool {
+        exportsPDFSheet || exportsIndividualPNGs
+    }
 }
 
 struct QRLabelLayoutSpec {
@@ -159,12 +125,15 @@ struct QRLabelExportManifest: Codable {
     let exportedAt: Date
     let appName: String
     let template: QRLabelTemplateDescriptor
+    let exportPaperSize: QRLabelPageSize
     let includeName: Bool
     let includeLabelCode: Bool
     let useColorAccent: Bool
     let packaging: QRLabelExportPackaging
+    let exportsPDFSheet: Bool
+    let exportsIndividualPNGs: Bool
     let individualAssetFormat: QRLabelIndividualAssetFormat
-    let sheetFileName: String
+    let sheetFileName: String?
     let individualFiles: [QRLabelExportFileRecord]
 }
 
@@ -176,38 +145,30 @@ struct QRLabelExportFileRecord: Codable, Identifiable {
 }
 
 extension QRLabelLayoutSpec {
-    static func make(for template: QRLabelTemplateDescriptor) -> QRLabelLayoutSpec {
-        let pageRect = template.pageSize.pageRect
+    static func make(
+        pageRect: CGRect,
+        template: QRLabelTemplateDescriptor,
+        contentRect: CGRect? = nil
+    ) -> QRLabelLayoutSpec {
+        let layoutRect = contentRect ?? pageRect.insetBy(
+            dx: max(12, min(pageRect.width, pageRect.height) * 0.03),
+            dy: max(12, min(pageRect.width, pageRect.height) * 0.03)
+        )
 
-        let contentInset: CGFloat
-        let itemSpacing: CGFloat
-        let cornerRadius: CGFloat
-
-        switch template.grid {
-        case .oneByOne:
-            contentInset = 48
-            itemSpacing = 0
-            cornerRadius = 28
-        case .twoByTwo:
-            contentInset = 28
-            itemSpacing = 18
-            cornerRadius = 22
-        case .threeBySix:
-            contentInset = 16
-            itemSpacing = 9
-            cornerRadius = 14
-        }
-
-        let availableWidth = pageRect.width - (contentInset * 2) - (CGFloat(template.grid.columns - 1) * itemSpacing)
-        let availableHeight = pageRect.height - (contentInset * 2) - (CGFloat(template.grid.rows - 1) * itemSpacing)
-        let labelWidth = availableWidth / CGFloat(template.grid.columns)
-        let labelHeight = availableHeight / CGFloat(template.grid.rows)
+        let contentInset = max(8, min(layoutRect.width, layoutRect.height) * 0.02)
+        let usableRect = layoutRect.insetBy(dx: contentInset, dy: contentInset)
+        let itemSpacing = max(4, min(usableRect.width, usableRect.height) * 0.015)
+        let availableWidth = usableRect.width - (CGFloat(template.columns - 1) * itemSpacing)
+        let availableHeight = usableRect.height - (CGFloat(template.rows - 1) * itemSpacing)
+        let labelWidth = availableWidth / CGFloat(template.columns)
+        let labelHeight = availableHeight / CGFloat(template.rows)
+        let cornerRadius = max(10, min(28, min(labelWidth, labelHeight) * 0.08))
 
         var frames: [CGRect] = []
-        for row in 0..<template.grid.rows {
-            for column in 0..<template.grid.columns {
-                let originX = contentInset + CGFloat(column) * (labelWidth + itemSpacing)
-                let originY = contentInset + CGFloat(row) * (labelHeight + itemSpacing)
+        for row in 0..<template.rows {
+            for column in 0..<template.columns {
+                let originX = usableRect.minX + CGFloat(column) * (labelWidth + itemSpacing)
+                let originY = usableRect.minY + CGFloat(row) * (labelHeight + itemSpacing)
                 frames.append(CGRect(x: originX, y: originY, width: labelWidth, height: labelHeight))
             }
         }

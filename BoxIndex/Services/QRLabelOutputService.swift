@@ -10,8 +10,8 @@ import UIKit
 
 enum QRLabelOutputError: LocalizedError {
     case noContainers
+    case noExportFormatsSelected
     case printUnavailable
-    case unsupportedPrintData
     case missingPresentationContext
     case failedToPresentPrintUI
     case failedToGenerateImage
@@ -19,11 +19,11 @@ enum QRLabelOutputError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noContainers:
-            return "There are no containers available for QR output."
+            return "Select at least one container for QR output."
+        case .noExportFormatsSelected:
+            return "Choose a PDF sheet, individual PNGs, or both before exporting."
         case .printUnavailable:
             return "Printing is not available on this device."
-        case .unsupportedPrintData:
-            return "BoxIndex could not prepare printable PDF data."
         case .missingPresentationContext:
             return "BoxIndex could not find an active screen to present printing options."
         case .failedToPresentPrintUI:
@@ -42,10 +42,17 @@ struct QRLabelPreview {
 @MainActor
 final class QRLabelOutputService {
     func preview(for container: Container, options: QRLabelOutputOptions) throws -> QRLabelPreview {
-        let layout = QRLabelLayoutSpec.make(for: options.template)
-        let previewSize = CGSize(width: max(layout.labelFrames.first?.width ?? 320, 220), height: max(layout.labelFrames.first?.height ?? 320, 220))
+        let layout = QRLabelLayoutSpec.make(
+            pageRect: options.exportPaperSize.pageRect,
+            template: options.template
+        )
+        let previewFrame = layout.labelFrames.first ?? CGRect(x: 0, y: 0, width: 320, height: 320)
+        let previewSize = CGSize(
+            width: max(previewFrame.width, 220),
+            height: max(previewFrame.height, 220)
+        )
 
-        guard let image = renderLabelImage(
+        guard let image = Self.renderLabelImage(
             for: container,
             options: options,
             canvasSize: previewSize,
@@ -54,52 +61,44 @@ final class QRLabelOutputService {
             throw QRLabelOutputError.failedToGenerateImage
         }
 
-        return QRLabelPreview(
-            image: image,
-            title: container.displayTitle
-        )
+        return QRLabelPreview(image: image, title: container.displayTitle)
     }
 
     func sheetPDFData(for containers: [Container], options: QRLabelOutputOptions) throws -> Data {
-        let sortedContainers = sorted(containers)
+        let sortedContainers = Self.sorted(containers)
         guard !sortedContainers.isEmpty else {
             throw QRLabelOutputError.noContainers
         }
 
-        let layout = QRLabelLayoutSpec.make(for: options.template)
-        let renderer = UIGraphicsPDFRenderer(bounds: layout.pageRect)
+        let pageRect = options.exportPaperSize.pageRect
+        let totalPages = pageCount(for: sortedContainers, options: options)
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
 
         return renderer.pdfData { context in
-            var index = 0
-
-            while index < sortedContainers.count {
+            for pageIndex in 0..<totalPages {
                 context.beginPage()
                 let cgContext = context.cgContext
-                cgContext.setFillColor(UIColor.systemBackground.cgColor)
-                cgContext.fill(layout.pageRect)
+                Self.fillPageBackground(pageRect, context: cgContext)
 
-                for frame in layout.labelFrames {
-                    guard index < sortedContainers.count else {
-                        break
-                    }
-
-                    drawLabel(
-                        for: sortedContainers[index],
-                        in: frame,
-                        options: options,
-                        cornerRadius: layout.cornerRadius,
-                        context: cgContext
-                    )
-                    index += 1
-                }
+                let layout = QRLabelLayoutSpec.make(pageRect: pageRect, template: options.template)
+                Self.drawPage(
+                    pageIndex: pageIndex,
+                    containers: sortedContainers,
+                    layout: layout,
+                    options: options,
+                    context: cgContext
+                )
             }
         }
     }
 
     func buildExportPackage(from containers: [Container], options: QRLabelOutputOptions) throws -> ExportPackage {
-        let sortedContainers = sorted(containers)
+        let sortedContainers = Self.sorted(containers)
         guard !sortedContainers.isEmpty else {
             throw QRLabelOutputError.noContainers
+        }
+        guard options.hasExportSelection else {
+            throw QRLabelOutputError.noExportFormatsSelected
         }
 
         let timestamp = ISO8601DateFormatter().string(from: .now).replacingOccurrences(of: ":", with: "-")
@@ -111,75 +110,89 @@ final class QRLabelOutputService {
         }
 
         let rootURL = FileManager.default.temporaryDirectory.appendingPathComponent(rootName, isDirectory: true)
-        let imagesURL = rootURL.appendingPathComponent("individual", isDirectory: true)
-
         if FileManager.default.fileExists(atPath: rootURL.path) {
             try FileManager.default.removeItem(at: rootURL)
         }
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
 
-        try FileManager.default.createDirectory(at: imagesURL, withIntermediateDirectories: true)
-
-        let layout = QRLabelLayoutSpec.make(for: options.template)
+        let previewLayout = QRLabelLayoutSpec.make(
+            pageRect: options.exportPaperSize.pageRect,
+            template: options.template
+        )
+        let previewFrame = previewLayout.labelFrames.first ?? CGRect(x: 0, y: 0, width: 340, height: 340)
         let imageCanvasSize = CGSize(
-            width: max(layout.labelFrames.first?.width ?? 340, 340),
-            height: max(layout.labelFrames.first?.height ?? 340, 340)
+            width: max(previewFrame.width, 340),
+            height: max(previewFrame.height, 340)
         )
 
         var fileNameCounts: [String: Int] = [:]
         var fileRecords: [QRLabelExportFileRecord] = []
 
-        for container in sortedContainers {
-            let baseFileName = sanitizedBaseFileName(for: container)
-            let count = fileNameCounts[baseFileName, default: 0]
-            fileNameCounts[baseFileName] = count + 1
+        if options.exportsIndividualPNGs {
+            let imagesURL = rootURL.appendingPathComponent("individual", isDirectory: true)
+            try FileManager.default.createDirectory(at: imagesURL, withIntermediateDirectories: true)
 
-            let resolvedBaseName = if count == 0 {
-                baseFileName
-            } else {
-                "\(baseFileName)-\(count + 1)"
-            }
+            for container in sortedContainers {
+                let baseFileName = Self.sanitizedBaseFileName(for: container)
+                let count = fileNameCounts[baseFileName, default: 0]
+                fileNameCounts[baseFileName] = count + 1
 
-            let fileName = "\(resolvedBaseName).\(options.individualAssetFormat.fileExtension)"
-            let fileURL = imagesURL.appendingPathComponent(fileName)
+                let resolvedBaseName = if count == 0 {
+                    baseFileName
+                } else {
+                    "\(baseFileName)-\(count + 1)"
+                }
 
-            guard let image = renderLabelImage(
-                for: container,
-                options: options,
-                canvasSize: imageCanvasSize,
-                cornerRadius: layout.cornerRadius
-            ) else {
-                throw QRLabelOutputError.failedToGenerateImage
-            }
+                let fileName = "\(resolvedBaseName).\(options.individualAssetFormat.fileExtension)"
+                let fileURL = imagesURL.appendingPathComponent(fileName)
 
-            guard let data = image.pngData() else {
-                throw QRLabelOutputError.failedToGenerateImage
-            }
+                guard let image = Self.renderLabelImage(
+                    for: container,
+                    options: options,
+                    canvasSize: imageCanvasSize,
+                    cornerRadius: previewLayout.cornerRadius
+                ) else {
+                    throw QRLabelOutputError.failedToGenerateImage
+                }
 
-            try data.write(to: fileURL, options: .atomic)
+                guard let data = image.pngData() else {
+                    throw QRLabelOutputError.failedToGenerateImage
+                }
 
-            fileRecords.append(
-                QRLabelExportFileRecord(
-                    id: container.id,
-                    name: container.displayTitle,
-                    labelCode: container.labelCode,
-                    fileName: "individual/\(fileName)"
+                try data.write(to: fileURL, options: .atomic)
+                fileRecords.append(
+                    QRLabelExportFileRecord(
+                        id: container.id,
+                        name: container.displayTitle,
+                        labelCode: container.labelCode,
+                        fileName: "individual/\(fileName)"
+                    )
                 )
-            )
+            }
         }
 
-        let sheetFileName = "sheet-\(options.template.pageSize.rawValue)-\(options.template.grid.rawValue).pdf"
-        let sheetURL = rootURL.appendingPathComponent(sheetFileName)
-        try sheetPDFData(for: sortedContainers, options: options).write(to: sheetURL, options: .atomic)
+        let sheetFileName: String?
+        if options.exportsPDFSheet {
+            let fileName = Self.sheetFileName(for: options)
+            let sheetURL = rootURL.appendingPathComponent(fileName)
+            try sheetPDFData(for: sortedContainers, options: options).write(to: sheetURL, options: .atomic)
+            sheetFileName = fileName
+        } else {
+            sheetFileName = nil
+        }
 
         let manifest = QRLabelExportManifest(
-            schemaVersion: 1,
+            schemaVersion: 2,
             exportedAt: .now,
             appName: "BoxIndex",
             template: options.template,
+            exportPaperSize: options.exportPaperSize,
             includeName: options.includeName,
             includeLabelCode: options.includeLabelCode,
             useColorAccent: options.useColorAccent,
             packaging: options.packaging,
+            exportsPDFSheet: options.exportsPDFSheet,
+            exportsIndividualPNGs: options.exportsIndividualPNGs,
             individualAssetFormat: options.individualAssetFormat,
             sheetFileName: sheetFileName,
             individualFiles: fileRecords
@@ -188,6 +201,7 @@ final class QRLabelOutputService {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
+
         let manifestURL = rootURL.appendingPathComponent("qr-label-export.json")
         try encoder.encode(manifest).write(to: manifestURL, options: .atomic)
 
@@ -195,12 +209,13 @@ final class QRLabelOutputService {
     }
 
     func pageCount(for containers: [Container], options: QRLabelOutputOptions) -> Int {
-        let count = sorted(containers).count
+        let count = Self.sorted(containers).count
         guard count > 0 else {
             return 0
         }
 
-        return Int(ceil(Double(count) / Double(options.template.grid.itemsPerPage)))
+        let itemsPerPage = max(1, options.template.itemsPerPage)
+        return Int(ceil(Double(count) / Double(itemsPerPage)))
     }
 
     func presentPrintSheet(
@@ -213,73 +228,113 @@ final class QRLabelOutputService {
             return
         }
 
-        do {
-            let pdfData = try sheetPDFData(for: containers, options: options)
-            guard UIPrintInteractionController.canPrint(pdfData as Data) else {
-                onComplete(.failure(QRLabelOutputError.unsupportedPrintData))
-                return
-            }
+        let sortedContainers = Self.sorted(containers)
+        guard !sortedContainers.isEmpty else {
+            onComplete(.failure(QRLabelOutputError.noContainers))
+            return
+        }
 
-            let controller = UIPrintInteractionController.shared
-            let printInfo = UIPrintInfo.printInfo()
-            printInfo.jobName = "BoxIndex QR Labels"
-            printInfo.orientation = .portrait
-            printInfo.duplex = .none
-            printInfo.outputType = options.useColorAccent ? .general : .grayscale
+        let controller = UIPrintInteractionController.shared
+        let printInfo = UIPrintInfo.printInfo()
+        printInfo.jobName = sortedContainers.count == 1
+            ? "BoxIndex QR Label"
+            : "BoxIndex QR Labels"
+        printInfo.orientation = .portrait
+        printInfo.duplex = .none
+        printInfo.outputType = options.useColorAccent ? .general : .grayscale
 
-            controller.printInfo = printInfo
-            controller.showsNumberOfCopies = true
-            controller.showsPaperSelectionForLoadedPapers = true
-            controller.showsPaperOrientation = true
-            controller.printingItem = pdfData
+        controller.printInfo = printInfo
+        controller.showsNumberOfCopies = true
+        controller.showsPaperSelectionForLoadedPapers = true
+        controller.showsPaperOrientation = true
+        controller.printingItem = nil
+        controller.printingItems = nil
+        controller.printPageRenderer = QRLabelPrintPageRenderer(
+            containers: sortedContainers,
+            options: options
+        )
 
-            guard let rootViewController = UIApplication.shared.topViewController() else {
-                onComplete(.failure(QRLabelOutputError.missingPresentationContext))
-                return
-            }
+        guard let rootViewController = UIApplication.shared.topViewController() else {
+            onComplete(.failure(QRLabelOutputError.missingPresentationContext))
+            return
+        }
 
-            let didPresent: Bool
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                let sourceRect = CGRect(
-                    x: rootViewController.view.bounds.midX - 1,
-                    y: rootViewController.view.bounds.midY - 1,
-                    width: 2,
-                    height: 2
-                )
-                didPresent = controller.present(
-                    from: sourceRect,
-                    in: rootViewController.view,
-                    animated: true
-                ) { _, completed, error in
-                    if let error {
-                        onComplete(.failure(error))
-                    } else if completed {
-                        onComplete(.success(()))
-                    } else {
-                        onComplete(.success(()))
-                    }
-                }
-            } else {
-                didPresent = controller.present(animated: true) { _, completed, error in
-                    if let error {
-                        onComplete(.failure(error))
-                    } else if completed {
-                        onComplete(.success(()))
-                    } else {
-                        onComplete(.success(()))
-                    }
+        let didPresent: Bool
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            let sourceRect = CGRect(
+                x: rootViewController.view.bounds.midX - 1,
+                y: rootViewController.view.bounds.midY - 1,
+                width: 2,
+                height: 2
+            )
+            didPresent = controller.present(
+                from: sourceRect,
+                in: rootViewController.view,
+                animated: true
+            ) { _, completed, error in
+                if let error {
+                    onComplete(.failure(error))
+                } else if completed {
+                    onComplete(.success(()))
+                } else {
+                    onComplete(.success(()))
                 }
             }
-
-            if !didPresent {
-                onComplete(.failure(QRLabelOutputError.failedToPresentPrintUI))
+        } else {
+            didPresent = controller.present(animated: true) { _, completed, error in
+                if let error {
+                    onComplete(.failure(error))
+                } else if completed {
+                    onComplete(.success(()))
+                } else {
+                    onComplete(.success(()))
+                }
             }
-        } catch {
-            onComplete(.failure(error))
+        }
+
+        if !didPresent {
+            onComplete(.failure(QRLabelOutputError.failedToPresentPrintUI))
         }
     }
 
-    private func renderLabelImage(
+    private static func sheetFileName(for options: QRLabelOutputOptions) -> String {
+        "sheet-\(options.exportPaperSize.rawValue)-r\(options.template.rows)-c\(options.template.columns).pdf"
+    }
+
+    fileprivate static func fillPageBackground(_ rect: CGRect, context: CGContext) {
+        context.saveGState()
+        context.setFillColor(UIColor.white.cgColor)
+        context.fill(rect)
+        context.restoreGState()
+    }
+
+    fileprivate static func drawPage(
+        pageIndex: Int,
+        containers: [Container],
+        layout: QRLabelLayoutSpec,
+        options: QRLabelOutputOptions,
+        context: CGContext
+    ) {
+        let itemsPerPage = max(1, options.template.itemsPerPage)
+        let startIndex = pageIndex * itemsPerPage
+
+        for (offset, frame) in layout.labelFrames.enumerated() {
+            let containerIndex = startIndex + offset
+            guard containerIndex < containers.count else {
+                break
+            }
+
+            drawLabel(
+                for: containers[containerIndex],
+                in: frame,
+                options: options,
+                cornerRadius: layout.cornerRadius,
+                context: context
+            )
+        }
+    }
+
+    private static func renderLabelImage(
         for container: Container,
         options: QRLabelOutputOptions,
         canvasSize: CGSize,
@@ -290,22 +345,20 @@ final class QRLabelOutputService {
         format.scale = 3
 
         let renderer = UIGraphicsImageRenderer(size: canvasSize, format: format)
-        return renderer.image { context in
+        return renderer.image { imageContext in
             let rect = CGRect(origin: .zero, size: canvasSize)
-            let cgContext = context.cgContext
-            cgContext.setFillColor(UIColor.systemBackground.cgColor)
-            cgContext.fill(rect)
+            fillPageBackground(rect, context: imageContext.cgContext)
             drawLabel(
                 for: container,
                 in: rect,
                 options: options,
                 cornerRadius: cornerRadius,
-                context: cgContext
+                context: imageContext.cgContext
             )
         }
     }
 
-    private func drawLabel(
+    private static func drawLabel(
         for container: Container,
         in rect: CGRect,
         options: QRLabelOutputOptions,
@@ -314,7 +367,7 @@ final class QRLabelOutputService {
     ) {
         let printableAccent = printableAccentColor(for: container, useColorAccent: options.useColorAccent)
         let borderColor = options.useColorAccent ? printableAccent.withAlphaComponent(0.4) : UIColor.systemGray4
-        let titleColor = options.useColorAccent ? printableAccent : UIColor.label
+        let titleColor = options.useColorAccent ? printableAccent : UIColor.black
         let cardRect = rect.insetBy(dx: 2, dy: 2)
         let cardPath = UIBezierPath(roundedRect: cardRect, cornerRadius: cornerRadius)
 
@@ -347,7 +400,10 @@ final class QRLabelOutputService {
             max(58, rect.height * 0.30)
         }
 
-        let qrSide = min(cardRect.width - (innerPadding * 2), cardRect.height - (innerPadding * 2) - textRegionHeight)
+        let qrSide = min(
+            cardRect.width - (innerPadding * 2),
+            cardRect.height - (innerPadding * 2) - textRegionHeight
+        )
         let qrFrame = CGRect(
             x: cardRect.midX - (qrSide / 2),
             y: cardRect.minY + innerPadding,
@@ -379,7 +435,7 @@ final class QRLabelOutputService {
         context.restoreGState()
     }
 
-    private func drawText(
+    private static func drawText(
         for container: Container,
         in rect: CGRect,
         titleColor: UIColor,
@@ -422,7 +478,7 @@ final class QRLabelOutputService {
                     string: name,
                     attributes: [
                         .font: nameFont,
-                        .foregroundColor: options.useColorAccent ? titleColor : UIColor.label,
+                        .foregroundColor: options.useColorAccent ? titleColor : UIColor.black,
                         .paragraphStyle: paragraphStyle,
                     ]
                 )
@@ -436,7 +492,7 @@ final class QRLabelOutputService {
         )
     }
 
-    private func printableAccentColor(for container: Container, useColorAccent: Bool) -> UIColor {
+    private static func printableAccentColor(for container: Container, useColorAccent: Bool) -> UIColor {
         guard useColorAccent, let accent = ContainerColorTag.uiColor(for: container.colorTag) else {
             return .black
         }
@@ -455,7 +511,7 @@ final class QRLabelOutputService {
         )
     }
 
-    private func sorted(_ containers: [Container]) -> [Container] {
+    private static func sorted(_ containers: [Container]) -> [Container] {
         containers.sorted {
             if $0.labelCode.localizedCaseInsensitiveCompare($1.labelCode) == .orderedSame {
                 return $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedAscending
@@ -465,7 +521,7 @@ final class QRLabelOutputService {
         }
     }
 
-    private func sanitizedBaseFileName(for container: Container) -> String {
+    private static func sanitizedBaseFileName(for container: Container) -> String {
         let base = [container.labelCode.trimmed, container.displayTitle.trimmed]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
@@ -481,6 +537,56 @@ final class QRLabelOutputService {
             .trimmingCharacters(in: CharacterSet(charactersIn: "- "))
 
         return cleaned.isEmpty ? container.id.uuidString : cleaned
+    }
+}
+
+private final class QRLabelPrintPageRenderer: UIPrintPageRenderer {
+    private let containers: [Container]
+    private let options: QRLabelOutputOptions
+    private let pageTotal: Int
+
+    init(containers: [Container], options: QRLabelOutputOptions) {
+        self.containers = containers
+        self.options = options
+        self.pageTotal = Int(
+            ceil(Double(containers.count) / Double(max(1, options.template.itemsPerPage)))
+        )
+        super.init()
+        headerHeight = 0
+        footerHeight = 0
+    }
+
+    override var numberOfPages: Int {
+        pageTotal
+    }
+
+    override func drawPage(at pageIndex: Int, in printableRect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return
+        }
+
+        let resolvedPaperRect = paperRect.isEmpty
+            ? CGRect(origin: .zero, size: printableRect.size)
+            : paperRect
+        let resolvedContentRect = printableRect.isEmpty
+            ? resolvedPaperRect.insetBy(dx: 18, dy: 18)
+            : printableRect.insetBy(dx: 4, dy: 4)
+
+        QRLabelOutputService.fillPageBackground(resolvedPaperRect, context: context)
+
+        let layout = QRLabelLayoutSpec.make(
+            pageRect: resolvedPaperRect,
+            template: options.template,
+            contentRect: resolvedContentRect
+        )
+
+        QRLabelOutputService.drawPage(
+            pageIndex: pageIndex,
+            containers: containers,
+            layout: layout,
+            options: options,
+            context: context
+        )
     }
 }
 
