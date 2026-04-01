@@ -26,6 +26,8 @@ struct QRLabelOutputView: View {
     @State private var errorMessage: String?
     @State private var didInitialize = false
 
+    private let lengthUnit = QRLabelLengthUnit.preferred
+
     init(
         availableContainers: [Container],
         initialSelectionIDs: Set<UUID> = [],
@@ -85,8 +87,12 @@ struct QRLabelOutputView: View {
                         "Grid",
                         value: "\(options.template.rows) × \(options.template.columns)"
                     )
-                    LabeledContent("Aspect Ratio", value: options.aspectRatioSummary)
+                    LabeledContent("Shape", value: options.aspectRatioSummary)
                     LabeledContent("Text Position", value: options.textPosition.title)
+                    if options.usesExplicitLabelSize {
+                        LabeledContent("Physical Size", value: options.explicitLabelSizeSummary(in: lengthUnit))
+                        LabeledContent("Sheet Rotation", value: options.sheetRotation.title)
+                    }
                     LabeledContent(
                         "Estimated Pages",
                         value: "\(pageCount)"
@@ -118,9 +124,17 @@ struct QRLabelOutputView: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        LabeledContent("Label Aspect Ratio", value: options.aspectRatioSummary)
-                        Slider(value: $options.labelAspectRatio, in: 0.5...2.5, step: 0.05)
+                    LabeledContent("Shape Preview", value: options.aspectRatioSummary)
+
+                    HStack(spacing: 12) {
+                        IntegerField(
+                            title: "Width Units",
+                            value: $options.aspectWidthUnits
+                        )
+                        IntegerField(
+                            title: "Height Units",
+                            value: $options.aspectHeightUnits
+                        )
                     }
 
                     Picker("Text Position", selection: $options.textPosition) {
@@ -134,7 +148,28 @@ struct QRLabelOutputView: View {
                         Slider(value: $options.textScale, in: 0.65...1.8, step: 0.05)
                     }
 
-                    Text("Printing uses the selected printer's paper size and printable area. Exported PDF sheets use the paper size chosen here.")
+                    Toggle("Use Explicit Label Size for Sheets", isOn: $options.usesExplicitLabelSize)
+
+                    if options.usesExplicitLabelSize {
+                        HStack(spacing: 12) {
+                            DecimalField(
+                                title: "Width (\(lengthUnit.shortTitle))",
+                                value: localizedWidthBinding
+                            )
+                            DecimalField(
+                                title: "Height (\(lengthUnit.shortTitle))",
+                                value: localizedHeightBinding
+                            )
+                        }
+
+                        Picker("Sheet Rotation", selection: $options.sheetRotation) {
+                            ForEach(QRLabelSheetRotation.allCases) { rotation in
+                                Text(rotation.title).tag(rotation)
+                            }
+                        }
+                    }
+
+                    Text("Printing uses the selected printer's paper size and printable area. Exported PDF sheets use the paper size chosen here. When explicit label size is on, BoxIndex preserves the requested physical size when possible and scales down only if the page or grid would otherwise overflow.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -319,6 +354,28 @@ struct QRLabelOutputView: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private var localizedWidthBinding: Binding<Double> {
+        Binding(
+            get: {
+                lengthUnit.displayValue(fromInches: options.explicitLabelWidthInches)
+            },
+            set: { newValue in
+                options.explicitLabelWidthInches = lengthUnit.inchesValue(fromDisplayValue: newValue)
+            }
+        )
+    }
+
+    private var localizedHeightBinding: Binding<Double> {
+        Binding(
+            get: {
+                lengthUnit.displayValue(fromInches: options.explicitLabelHeightInches)
+            },
+            set: { newValue in
+                options.explicitLabelHeightInches = lengthUnit.inchesValue(fromDisplayValue: newValue)
+            }
+        )
+    }
 }
 
 private struct SelectableContainerRow: View {
@@ -368,6 +425,40 @@ private struct QRLabelPreviewCard: View {
                     description: Text("BoxIndex could not generate a QR preview for this configuration.")
                 )
             }
+        }
+    }
+}
+
+private struct IntegerField: View {
+    let title: String
+    @Binding var value: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField(title, value: $value, format: .number)
+                .keyboardType(.numberPad)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+}
+
+private struct DecimalField: View {
+    let title: String
+    @Binding var value: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField(title, value: $value, format: .number.precision(.fractionLength(0...2)))
+                .keyboardType(.decimalPad)
+                .textFieldStyle(.roundedBorder)
         }
     }
 }

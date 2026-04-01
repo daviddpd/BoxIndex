@@ -74,7 +74,11 @@ final class QRLabelOutputService {
                 let cgContext = context.cgContext
                 Self.fillPageBackground(pageRect, context: cgContext)
 
-                let layout = QRLabelLayoutSpec.make(pageRect: pageRect, template: options.template)
+                let layout = Self.pageLayout(
+                    pageRect: pageRect,
+                    contentRect: nil,
+                    options: options
+                )
                 Self.drawPage(
                     pageIndex: pageIndex,
                     containers: sortedContainers,
@@ -170,7 +174,7 @@ final class QRLabelOutputService {
         }
 
         let manifest = QRLabelExportManifest(
-            schemaVersion: 3,
+            schemaVersion: 4,
             exportedAt: .now,
             appName: "BoxIndex",
             template: options.template,
@@ -178,9 +182,14 @@ final class QRLabelOutputService {
             includeName: options.includeName,
             includeLabelCode: options.includeLabelCode,
             useColorAccent: options.useColorAccent,
-            labelAspectRatio: options.labelAspectRatio,
+            aspectWidthUnits: options.clampedAspectWidthUnits,
+            aspectHeightUnits: options.clampedAspectHeightUnits,
             textPosition: options.textPosition,
             textScale: options.textScale,
+            usesExplicitLabelSize: options.usesExplicitLabelSize,
+            explicitLabelWidthInches: options.usesExplicitLabelSize ? options.explicitLabelWidthInchesClamped : nil,
+            explicitLabelHeightInches: options.usesExplicitLabelSize ? options.explicitLabelHeightInchesClamped : nil,
+            sheetRotation: options.sheetRotation,
             packaging: options.packaging,
             exportsPDFSheet: options.exportsPDFSheet,
             exportsIndividualPNGs: options.exportsIndividualPNGs,
@@ -285,8 +294,25 @@ final class QRLabelOutputService {
     }
 
     private static func sheetFileName(for options: QRLabelOutputOptions) -> String {
-        let aspect = String(format: "%.2f", options.labelAspectRatio).replacingOccurrences(of: ".", with: "_")
-        return "sheet-\(options.exportPaperSize.rawValue)-r\(options.template.rows)-c\(options.template.columns)-a\(aspect)-\(options.textPosition.rawValue).pdf"
+        var components = [
+            "sheet",
+            options.exportPaperSize.rawValue,
+            "r\(options.template.rows)",
+            "c\(options.template.columns)",
+            "shape\(options.clampedAspectWidthUnits)x\(options.clampedAspectHeightUnits)",
+            options.textPosition.rawValue,
+        ]
+
+        if options.usesExplicitLabelSize {
+            let width = String(format: "%.2f", options.explicitLabelWidthInchesClamped).replacingOccurrences(of: ".", with: "_")
+            let height = String(format: "%.2f", options.explicitLabelHeightInchesClamped).replacingOccurrences(of: ".", with: "_")
+            components.append("size\(width)x\(height)in")
+            if options.sheetRotation != .none {
+                components.append(options.sheetRotation.rawValue)
+            }
+        }
+
+        return components.joined(separator: "-") + ".pdf"
     }
 
     fileprivate static func fillPageBackground(_ rect: CGRect, context: CGContext) {
@@ -316,16 +342,47 @@ final class QRLabelOutputService {
                 for: containers[containerIndex],
                 in: frame,
                 options: options,
-                context: context
+                context: context,
+                applySheetRotation: true,
+                useSlotAsFixedFrame: options.usesExplicitLabelSize
             )
         }
+    }
+
+    fileprivate static func pageLayout(
+        pageRect: CGRect,
+        contentRect: CGRect?,
+        options: QRLabelOutputOptions
+    ) -> QRLabelLayoutSpec {
+        QRLabelLayoutSpec.make(
+            pageRect: pageRect,
+            template: options.template,
+            contentRect: contentRect,
+            preferredLabelSize: preferredPageLabelSize(for: options)
+        )
+    }
+
+    private static func preferredPageLabelSize(for options: QRLabelOutputOptions) -> CGSize? {
+        guard options.usesExplicitLabelSize else {
+            return nil
+        }
+
+        let widthPoints = CGFloat(options.explicitLabelWidthInchesClamped * 72)
+        let heightPoints = CGFloat(options.explicitLabelHeightInchesClamped * 72)
+        let size = CGSize(width: widthPoints, height: heightPoints)
+
+        if options.sheetRotation.swapsDimensions {
+            return CGSize(width: size.height, height: size.width)
+        }
+
+        return size
     }
 
     private static func labelCanvasSize(
         aspectRatio: CGFloat,
         minimumShortestSide: CGFloat
     ) -> CGSize {
-        let ratio = max(0.5, min(2.5, aspectRatio))
+        let ratio = max(0.4, min(3.0, aspectRatio))
         let shortestSide = max(240, minimumShortestSide)
         let squareRootRatio = sqrt(ratio)
 
@@ -335,7 +392,7 @@ final class QRLabelOutputService {
     }
 
     private static func fittedLabelRect(in slotRect: CGRect, aspectRatio: CGFloat) -> CGRect {
-        let ratio = max(0.5, min(2.5, aspectRatio))
+        let ratio = max(0.4, min(3.0, aspectRatio))
         let availableRect = slotRect.insetBy(dx: 2, dy: 2)
         let slotRatio = availableRect.width / max(1, availableRect.height)
 
@@ -377,7 +434,9 @@ final class QRLabelOutputService {
                 for: container,
                 in: rect,
                 options: options,
-                context: imageContext.cgContext
+                context: imageContext.cgContext,
+                applySheetRotation: false,
+                useSlotAsFixedFrame: false
             )
         }
     }
@@ -386,9 +445,60 @@ final class QRLabelOutputService {
         for container: Container,
         in slotRect: CGRect,
         options: QRLabelOutputOptions,
+        context: CGContext,
+        applySheetRotation: Bool,
+        useSlotAsFixedFrame: Bool
+    ) {
+        let footprintAspectRatio: CGFloat
+        if applySheetRotation, options.sheetRotation.swapsDimensions, !useSlotAsFixedFrame {
+            footprintAspectRatio = max(0.1, 1 / options.clampedLabelAspectRatio)
+        } else {
+            footprintAspectRatio = options.clampedLabelAspectRatio
+        }
+
+        let labelRect = useSlotAsFixedFrame
+            ? slotRect.insetBy(dx: 2, dy: 2)
+            : fittedLabelRect(in: slotRect, aspectRatio: footprintAspectRatio)
+
+        guard labelRect.width > 0, labelRect.height > 0 else {
+            return
+        }
+
+        if applySheetRotation, options.sheetRotation != .none {
+            context.saveGState()
+            context.translateBy(x: labelRect.midX, y: labelRect.midY)
+            context.rotate(by: options.sheetRotation.radians)
+
+            let localRect = CGRect(
+                x: -(labelRect.height / 2),
+                y: -(labelRect.width / 2),
+                width: labelRect.height,
+                height: labelRect.width
+            )
+
+            drawLabelContents(
+                for: container,
+                in: localRect,
+                options: options,
+                context: context
+            )
+            context.restoreGState()
+        } else {
+            drawLabelContents(
+                for: container,
+                in: labelRect,
+                options: options,
+                context: context
+            )
+        }
+    }
+
+    private static func drawLabelContents(
+        for container: Container,
+        in labelRect: CGRect,
+        options: QRLabelOutputOptions,
         context: CGContext
     ) {
-        let labelRect = fittedLabelRect(in: slotRect, aspectRatio: options.clampedLabelAspectRatio)
         let printableAccent = printableAccentColor(for: container, useColorAccent: options.useColorAccent)
         let borderColor = options.useColorAccent ? printableAccent.withAlphaComponent(0.4) : UIColor.systemGray4
         let titleColor = options.useColorAccent ? printableAccent : UIColor.black
@@ -532,13 +642,33 @@ final class QRLabelOutputService {
         }
 
         let icon = container.resolvedIcon
+        let attributedText = makeAttributedText(
+            for: container,
+            within: rect,
+            titleColor: titleColor,
+            options: options
+        )
+        let estimatedTextHeight = attributedText.map {
+            ceil(
+                $0.boundingRect(
+                    with: CGSize(width: rect.width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    context: nil
+                ).height
+            )
+        } ?? 0
+
         let iconContainerSize = min(
             max(28, min(rect.width, rect.height) * 0.28),
             rect.width * 0.5
         )
+        let spacing = attributedText == nil ? 0 : max(6, rect.height * 0.06)
+        let totalHeight = min(rect.height, iconContainerSize + spacing + estimatedTextHeight)
+        let blockOriginY = max(rect.minY, rect.midY - (totalHeight / 2))
+
         let iconRect = CGRect(
             x: rect.midX - (iconContainerSize / 2),
-            y: rect.minY,
+            y: blockOriginY,
             width: iconContainerSize,
             height: iconContainerSize
         )
@@ -559,32 +689,24 @@ final class QRLabelOutputService {
             color: titleColor
         )
 
-        let textTop = iconRect.maxY + max(6, rect.height * 0.06)
-        let textRect = CGRect(
-            x: rect.minX,
-            y: textTop,
-            width: rect.width,
-            height: max(0, rect.maxY - textTop)
-        )
-
-        drawText(
-            for: container,
-            in: textRect,
-            titleColor: titleColor,
-            options: options
-        )
+        if let attributedText {
+            let textTop = iconRect.maxY + spacing
+            let textRect = CGRect(
+                x: rect.minX,
+                y: textTop,
+                width: rect.width,
+                height: max(0, rect.maxY - textTop)
+            )
+            drawText(attributedText, in: textRect)
+        }
     }
 
-    private static func drawText(
+    private static func makeAttributedText(
         for container: Container,
-        in rect: CGRect,
+        within rect: CGRect,
         titleColor: UIColor,
         options: QRLabelOutputOptions
-    ) {
-        guard rect.height > 0 else {
-            return
-        }
-
+    ) -> NSAttributedString? {
         let labelCode = container.labelCode.trimmed
         let name = container.displayTitle.trimmed
         let paragraphStyle = NSMutableParagraphStyle()
@@ -632,11 +754,15 @@ final class QRLabelOutputService {
             )
         }
 
-        guard attributed.length > 0 else {
+        return attributed.length > 0 ? attributed : nil
+    }
+
+    private static func drawText(_ attributedText: NSAttributedString, in rect: CGRect) {
+        guard rect.height > 0, rect.width > 0 else {
             return
         }
 
-        attributed.draw(
+        attributedText.draw(
             with: rect,
             options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
             context: nil
@@ -739,10 +865,10 @@ private final class QRLabelPrintPageRenderer: UIPrintPageRenderer {
 
         QRLabelOutputService.fillPageBackground(resolvedPaperRect, context: context)
 
-        let layout = QRLabelLayoutSpec.make(
+        let layout = QRLabelOutputService.pageLayout(
             pageRect: resolvedPaperRect,
-            template: options.template,
-            contentRect: resolvedContentRect
+            contentRect: resolvedContentRect,
+            options: options
         )
 
         QRLabelOutputService.drawPage(

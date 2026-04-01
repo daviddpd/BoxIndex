@@ -101,9 +101,14 @@ struct BoxIndexTests {
             iconKey: ContainerIcon.gift.rawValue
         )
         var options = QRLabelOutputOptions()
-        options.labelAspectRatio = 1.6
+        options.aspectWidthUnits = 5
+        options.aspectHeightUnits = 3
         options.textPosition = .right
         options.textScale = 1.25
+        options.usesExplicitLabelSize = true
+        options.explicitLabelWidthInches = 3
+        options.explicitLabelHeightInches = 5
+        options.sheetRotation = .clockwise90
 
         let package = try service.buildExportPackage(from: [container], options: options)
         defer {
@@ -126,9 +131,14 @@ struct BoxIndexTests {
         #expect(manifest.exportPaperSize == .letter)
         #expect(manifest.template.rows == 2)
         #expect(manifest.template.columns == 2)
-        #expect(manifest.labelAspectRatio == 1.6)
+        #expect(manifest.aspectWidthUnits == 5)
+        #expect(manifest.aspectHeightUnits == 3)
         #expect(manifest.textPosition == .right)
         #expect(manifest.textScale == 1.25)
+        #expect(manifest.usesExplicitLabelSize)
+        #expect(manifest.explicitLabelWidthInches == 3)
+        #expect(manifest.explicitLabelHeightInches == 5)
+        #expect(manifest.sheetRotation == .clockwise90)
         #expect(manifest.exportsPDFSheet)
         #expect(manifest.exportsIndividualPNGs)
         #expect(manifest.individualFiles.count == 1)
