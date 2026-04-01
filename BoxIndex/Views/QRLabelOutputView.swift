@@ -85,6 +85,8 @@ struct QRLabelOutputView: View {
                         "Grid",
                         value: "\(options.template.rows) × \(options.template.columns)"
                     )
+                    LabeledContent("Aspect Ratio", value: options.aspectRatioSummary)
+                    LabeledContent("Text Position", value: options.textPosition.title)
                     LabeledContent(
                         "Estimated Pages",
                         value: "\(pageCount)"
@@ -114,6 +116,22 @@ struct QRLabelOutputView: View {
                         ForEach(QRLabelPageSize.allCases) { pageSize in
                             Text(pageSize.title).tag(pageSize)
                         }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Label Aspect Ratio", value: options.aspectRatioSummary)
+                        Slider(value: $options.labelAspectRatio, in: 0.5...2.5, step: 0.05)
+                    }
+
+                    Picker("Text Position", selection: $options.textPosition) {
+                        ForEach(QRLabelTextPosition.allCases) { position in
+                            Text(position.title).tag(position)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Text Scale", value: options.textScaleSummary)
+                        Slider(value: $options.textScale, in: 0.65...1.8, step: 0.05)
                     }
 
                     Text("Printing uses the selected printer's paper size and printable area. Exported PDF sheets use the paper size chosen here.")

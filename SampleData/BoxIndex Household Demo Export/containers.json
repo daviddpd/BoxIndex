@@ -1,0 +1,342 @@
+[
+  {
+    "aliases" : [
+      "Holiday Tree",
+      "Christmas Bin"
+    ],
+    "colorTag" : "green",
+    "createdAt" : "2025-01-05T18:00:00Z",
+    "id" : "CCB81AC8-02E9-4540-98F1-0DB254666E0B",
+    "isArchived" : false,
+    "labelCode" : "HD-001",
+    "location" : "Attic",
+    "name" : "Christmas Tree Decor",
+    "notes" : "Main tree ornaments and lighting for the living room setup.",
+    "photoFileName" : "CCB81AC8-02E9-4540-98F1-0DB254666E0B-hd-001-christmas-tree-decor.jpg",
+    "subLocation" : "North Wall Rack",
+    "updatedAt" : "2025-01-29T18:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Halloween Tote",
+      "Spooky Porch Bin"
+    ],
+    "colorTag" : "amber",
+    "createdAt" : "2025-01-14T18:00:00Z",
+    "id" : "881CEBDD-B799-4792-8051-34EF47F0ADD6",
+    "isArchived" : false,
+    "labelCode" : "HD-002",
+    "location" : "Garage",
+    "name" : "Halloween Porch Decor",
+    "notes" : "Porch and entry decorations for trick-or-treat night.",
+    "photoFileName" : "881CEBDD-B799-4792-8051-34EF47F0ADD6-hd-002-halloween-porch-decor.jpg",
+    "subLocation" : "Top Shelf",
+    "updatedAt" : "2025-02-07T18:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Spring Decor",
+      "Easter Bin"
+    ],
+    "colorTag" : "coral",
+    "createdAt" : "2025-01-23T18:00:00Z",
+    "id" : "B3C50C99-2D34-4440-AC6C-CED63B5C2E6E",
+    "isArchived" : false,
+    "labelCode" : "HD-003",
+    "location" : "Hall Closet",
+    "name" : "Easter & Spring Decor",
+    "notes" : "Seasonal table decor, eggs, and spring brunch accents.",
+    "photoFileName" : "B3C50C99-2D34-4440-AC6C-CED63B5C2E6E-hd-003-easter-and-spring-decor.jpg",
+    "subLocation" : "Upper Cubby",
+    "updatedAt" : "2025-02-16T18:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Autumn Tote",
+      "Harvest Bin"
+    ],
+    "colorTag" : "amber",
+    "createdAt" : "2025-02-01T18:00:00Z",
+    "id" : "C055A9E5-9A27-4A34-B612-C1409A32BC9E",
+    "isArchived" : false,
+    "labelCode" : "HD-004",
+    "location" : "Basement",
+    "name" : "Fall Harvest Decor",
+    "notes" : "Neutral fall decor for mantel, table, and front entry.",
+    "photoFileName" : "C055A9E5-9A27-4A34-B612-C1409A32BC9E-hd-004-fall-harvest-decor.jpg",
+    "subLocation" : "Seasonal Rack",
+    "updatedAt" : "2025-02-25T18:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Valentine Box",
+      "Heart Crafts"
+    ],
+    "colorTag" : "coral",
+    "createdAt" : "2025-02-10T18:00:00Z",
+    "id" : "9FA97E22-9524-4073-AA7E-E503CD895A56",
+    "isArchived" : false,
+    "labelCode" : "HD-005",
+    "location" : "Office Closet",
+    "name" : "Valentine Craft Box",
+    "notes" : "Cards, classroom exchange extras, and heart-themed decorations.",
+    "photoFileName" : "9FA97E22-9524-4073-AA7E-E503CD895A56-hd-005-valentine-craft-box.jpg",
+    "subLocation" : "Craft Shelf",
+    "updatedAt" : "2025-03-06T18:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Party Box",
+      "Birthday Bin"
+    ],
+    "colorTag" : "blue",
+    "createdAt" : "2025-02-19T18:00:00Z",
+    "id" : "022703AD-B090-4D3E-9C08-C5F411B5029B",
+    "isArchived" : false,
+    "labelCode" : "PT-006",
+    "location" : "Garage",
+    "name" : "Birthday Party Supplies",
+    "notes" : "Reusable supplies for family birthdays and backyard celebrations.",
+    "photoFileName" : "022703AD-B090-4D3E-9C08-C5F411B5029B-pt-006-birthday-party-supplies.jpg",
+    "subLocation" : "Party Shelf",
+    "updatedAt" : "2025-03-15T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Building Bin",
+      "Block Tote"
+    ],
+    "colorTag" : "blue",
+    "createdAt" : "2025-02-28T18:00:00Z",
+    "id" : "37897616-6169-4612-8D59-162777EC3E11",
+    "isArchived" : false,
+    "labelCode" : "KT-007",
+    "location" : "Playroom",
+    "name" : "Kids Building Toys",
+    "notes" : "Loose construction toys and build accessories kept together for rainy days.",
+    "photoFileName" : "37897616-6169-4612-8D59-162777EC3E11-kt-007-kids-building-toys.jpg",
+    "subLocation" : "Cube Shelf 2",
+    "updatedAt" : "2025-03-24T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Art Bin",
+      "Craft Tote"
+    ],
+    "colorTag" : "coral",
+    "createdAt" : "2025-03-09T17:00:00Z",
+    "id" : "99123417-4064-448A-86C7-3CA99FFEEE8A",
+    "isArchived" : false,
+    "labelCode" : "KT-008",
+    "location" : "Playroom",
+    "name" : "Kids Art Supplies",
+    "notes" : "Everyday art materials for after-school projects and weekend crafts.",
+    "photoFileName" : "99123417-4064-448A-86C7-3CA99FFEEE8A-kt-008-kids-art-supplies.jpg",
+    "subLocation" : "Craft Cart Bottom",
+    "updatedAt" : "2025-04-02T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Game Crate",
+      "Board Game Bin"
+    ],
+    "colorTag" : "slate",
+    "createdAt" : "2025-03-18T17:00:00Z",
+    "id" : "AA14BD17-C8F0-424C-BD2E-2736CDBB261D",
+    "isArchived" : false,
+    "labelCode" : "KT-009",
+    "location" : "Family Room",
+    "name" : "Family Board Games",
+    "notes" : "Card games and compact board games stored together for easy weekend access.",
+    "photoFileName" : "AA14BD17-C8F0-424C-BD2E-2736CDBB261D-kt-009-family-board-games.jpg",
+    "subLocation" : "Cabinet Lower Shelf",
+    "updatedAt" : "2025-04-11T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Camp Bin",
+      "Camp Kitchen Tote"
+    ],
+    "colorTag" : "green",
+    "createdAt" : "2025-03-27T17:00:00Z",
+    "id" : "83B11F3B-AAEB-4BEA-9462-BDCFE974691A",
+    "isArchived" : false,
+    "labelCode" : "HB-010",
+    "location" : "Garage",
+    "name" : "Camping Gear Bin",
+    "notes" : "Camp kitchen and campsite setup items that get packed into the car first.",
+    "photoFileName" : "83B11F3B-AAEB-4BEA-9462-BDCFE974691A-hb-010-camping-gear-bin.jpg",
+    "subLocation" : "Back Wall Shelf",
+    "updatedAt" : "2025-04-20T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Beach Tote",
+      "Summer Beach Bag"
+    ],
+    "colorTag" : "blue",
+    "createdAt" : "2025-04-05T17:00:00Z",
+    "id" : "0B0EE8F2-84E2-4F1C-B57A-5117391D91E7",
+    "isArchived" : false,
+    "labelCode" : "HB-011",
+    "location" : "Mudroom",
+    "name" : "Beach Day Tote",
+    "notes" : "Grab-and-go beach and pool-day supplies for summer weekends.",
+    "photoFileName" : "0B0EE8F2-84E2-4F1C-B57A-5117391D91E7-hb-011-beach-day-tote.jpg",
+    "subLocation" : "Bench Storage",
+    "updatedAt" : "2025-04-29T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Cable Bin",
+      "Chargers Drawer"
+    ],
+    "colorTag" : "slate",
+    "createdAt" : "2025-04-14T17:00:00Z",
+    "id" : "32339427-92D4-42E8-AE1A-BC0784DAE93C",
+    "isArchived" : false,
+    "labelCode" : "HB-012",
+    "location" : "Office Closet",
+    "name" : "Cables & Chargers",
+    "notes" : "Spare everyday cables sorted for quick tech replacement.",
+    "photoFileName" : "32339427-92D4-42E8-AE1A-BC0784DAE93C-hb-012-cables-and-chargers.jpg",
+    "subLocation" : "Plastic Drawer 3",
+    "updatedAt" : "2025-05-08T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Tool Case",
+      "Drill Accessories"
+    ],
+    "colorTag" : "amber",
+    "createdAt" : "2025-04-23T17:00:00Z",
+    "id" : "414A170C-EB9E-4712-B3FC-81342688311F",
+    "isArchived" : false,
+    "labelCode" : "HB-013",
+    "location" : "Garage",
+    "name" : "Power Tool Accessories",
+    "notes" : "Accessories and consumables for the drill, driver, and circular saw.",
+    "photoFileName" : "414A170C-EB9E-4712-B3FC-81342688311F-hb-013-power-tool-accessories.jpg",
+    "subLocation" : "Workbench Cabinet",
+    "updatedAt" : "2025-05-17T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Paint Tote",
+      "DIY Paint Bin"
+    ],
+    "colorTag" : "coral",
+    "createdAt" : "2025-05-02T17:00:00Z",
+    "id" : "22C0E21A-A8E2-40E7-8042-D02671C99177",
+    "isArchived" : false,
+    "labelCode" : "HB-014",
+    "location" : "Laundry Room",
+    "name" : "Painting Supplies Tote",
+    "notes" : "Touch-up painting and small weekend project supplies.",
+    "photoFileName" : "22C0E21A-A8E2-40E7-8042-D02671C99177-hb-014-painting-supplies-tote.jpg",
+    "subLocation" : "Upper Shelf",
+    "updatedAt" : "2025-05-26T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Sewing Box",
+      "Mending Kit"
+    ],
+    "colorTag" : "slate",
+    "createdAt" : "2025-05-11T17:00:00Z",
+    "id" : "1609B0D8-094E-44F7-BB21-50C30B7B1739",
+    "isArchived" : false,
+    "labelCode" : "HB-015",
+    "location" : "Guest Room Closet",
+    "name" : "Sewing & Mending Box",
+    "notes" : "Basic mending tools, spare notions, and quick fix supplies.",
+    "photoFileName" : "1609B0D8-094E-44F7-BB21-50C30B7B1739-hb-015-sewing-and-mending-box.jpg",
+    "subLocation" : "Fabric Bin Stack",
+    "updatedAt" : "2025-06-04T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Garden Bin",
+      "Planting Tote"
+    ],
+    "colorTag" : "green",
+    "createdAt" : "2025-05-20T17:00:00Z",
+    "id" : "5A784548-33EE-462A-90C0-AD7CBEB9BCA3",
+    "isArchived" : false,
+    "labelCode" : "HB-016",
+    "location" : "Garage",
+    "name" : "Garden Supplies Bin",
+    "notes" : "Small gardening tools and seasonal planting supplies.",
+    "photoFileName" : "5A784548-33EE-462A-90C0-AD7CBEB9BCA3-hb-016-garden-supplies-bin.jpg",
+    "subLocation" : "Side Door Rack",
+    "updatedAt" : "2025-06-13T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Pet Bin",
+      "Dog & Cat Supplies"
+    ],
+    "colorTag" : "blue",
+    "createdAt" : "2025-05-29T17:00:00Z",
+    "id" : "33526A3A-B569-42D7-879C-AC2A6786230D",
+    "isArchived" : false,
+    "labelCode" : "HB-017",
+    "location" : "Laundry Room",
+    "name" : "Pet Care Supplies",
+    "notes" : "Backup grooming and travel supplies for the dog and cat.",
+    "photoFileName" : "33526A3A-B569-42D7-879C-AC2A6786230D-hb-017-pet-care-supplies.jpg",
+    "subLocation" : "Cabinet Floor",
+    "updatedAt" : "2025-06-22T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Winter Tote",
+      "Snow Gear Bin"
+    ],
+    "colorTag" : "slate",
+    "createdAt" : "2025-06-07T17:00:00Z",
+    "id" : "7E1C26D0-CF49-47DA-8237-545C7C3C59B8",
+    "isArchived" : false,
+    "labelCode" : "HB-018",
+    "location" : "Coat Closet",
+    "name" : "Winter Accessories Tote",
+    "notes" : "Cold-weather extras that don't fit on the main hook rail.",
+    "photoFileName" : "7E1C26D0-CF49-47DA-8237-545C7C3C59B8-hb-018-winter-accessories-tote.jpg",
+    "subLocation" : "Upper Shelf",
+    "updatedAt" : "2025-07-01T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Keepsake Box",
+      "Baby Memory Box"
+    ],
+    "colorTag" : "coral",
+    "createdAt" : "2025-06-16T17:00:00Z",
+    "id" : "7CF59A01-888E-4D7D-B1F2-4D7242AB801C",
+    "isArchived" : false,
+    "labelCode" : "HB-019",
+    "location" : "Primary Closet",
+    "name" : "Baby Keepsakes Box",
+    "notes" : "Special keepsakes and favorite early baby items.",
+    "photoFileName" : "7CF59A01-888E-4D7D-B1F2-4D7242AB801C-hb-019-baby-keepsakes-box.jpg",
+    "subLocation" : "Top Shelf",
+    "updatedAt" : "2025-07-10T17:00:00Z"
+  },
+  {
+    "aliases" : [
+      "Emergency Bin",
+      "Power Outage Tote"
+    ],
+    "colorTag" : "amber",
+    "createdAt" : "2025-06-25T17:00:00Z",
+    "id" : "337BA64C-E7E9-4A5F-A84E-C78FFFDD6033",
+    "isArchived" : false,
+    "labelCode" : "HB-020",
+    "location" : "Garage",
+    "name" : "Emergency Supply Bin",
+    "notes" : "Backup essentials kept together for outages and quick evacuations.",
+    "photoFileName" : "337BA64C-E7E9-4A5F-A84E-C78FFFDD6033-hb-020-emergency-supply-bin.jpg",
+    "subLocation" : "Near Door Shelf",
+    "updatedAt" : "2025-07-19T17:00:00Z"
+  }
+]

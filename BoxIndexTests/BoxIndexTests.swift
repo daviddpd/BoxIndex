@@ -51,8 +51,16 @@ struct BoxIndexTests {
 
     @Test
     func migrationPlanExposesCurrentSchema() {
-        #expect(BoxIndexMigrationPlan.schemas.count == 1)
+        #expect(BoxIndexMigrationPlan.schemas.count == 2)
         #expect(BoxIndexSchemaV1.models.count == 3)
+        #expect(BoxIndexSchemaV2.models.count == 3)
+    }
+
+    @Test
+    func containerIconCatalogOffersCuratedChoices() {
+        #expect(ContainerIcon.allCases.count >= 32)
+        #expect(ContainerIcon.groupedIcons.count == ContainerIconCategory.allCases.count)
+        #expect(ContainerIcon.shippingBox.category == .storage)
     }
 
     @Test
@@ -85,9 +93,19 @@ struct BoxIndexTests {
     @MainActor
     func qrLabelExportPackageContainsManifestSheetAndPNG() throws {
         let service = QRLabelOutputService()
-        let container = Container(name: "Holiday Decor", labelCode: "HD-001", location: "Closet", colorTag: "coral")
+        let container = Container(
+            name: "Holiday Decor",
+            labelCode: "HD-001",
+            location: "Closet",
+            colorTag: "coral",
+            iconKey: ContainerIcon.gift.rawValue
+        )
+        var options = QRLabelOutputOptions()
+        options.labelAspectRatio = 1.6
+        options.textPosition = .right
+        options.textScale = 1.25
 
-        let package = try service.buildExportPackage(from: [container], options: QRLabelOutputOptions())
+        let package = try service.buildExportPackage(from: [container], options: options)
         defer {
             try? FileManager.default.removeItem(at: package.directoryURL)
         }
@@ -108,6 +126,9 @@ struct BoxIndexTests {
         #expect(manifest.exportPaperSize == .letter)
         #expect(manifest.template.rows == 2)
         #expect(manifest.template.columns == 2)
+        #expect(manifest.labelAspectRatio == 1.6)
+        #expect(manifest.textPosition == .right)
+        #expect(manifest.textScale == 1.25)
         #expect(manifest.exportsPDFSheet)
         #expect(manifest.exportsIndividualPNGs)
         #expect(manifest.individualFiles.count == 1)

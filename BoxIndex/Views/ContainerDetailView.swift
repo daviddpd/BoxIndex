@@ -35,6 +35,17 @@ struct ContainerDetailView: View {
                     Text("Location")
                 }
 
+                LabeledContent("Icon") {
+                    HStack(spacing: 10) {
+                        ContainerIconBadgeView(
+                            icon: container.resolvedIcon,
+                            size: 34,
+                            accentColor: ContainerColorTag.color(for: container.colorTag) ?? container.resolvedIcon.color
+                        )
+                        Text(ContainerIcon.title(for: container.iconKey) ?? "Default Box")
+                    }
+                }
+
                 if let colorTitle = ContainerColorTag.title(for: container.colorTag) {
                     LabeledContent("Color Tag", value: colorTitle)
                 }

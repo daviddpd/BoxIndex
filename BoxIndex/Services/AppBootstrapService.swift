@@ -32,6 +32,7 @@ enum AppBootstrapService {
             subLocation: "Top Shelf",
             notes: "Lights, garlands, and extension cords.",
             colorTag: ContainerColorTag.amber.rawValue,
+            iconKey: ContainerIcon.tree.rawValue,
             aliases: ["Holiday Bin", "Decor Tote"]
         )
 
@@ -42,6 +43,7 @@ enum AppBootstrapService {
             subLocation: "Rack B",
             notes: "Tent, stove, and cook kit.",
             colorTag: ContainerColorTag.green.rawValue,
+            iconKey: ContainerIcon.tent.rawValue,
             aliases: ["Camp Box"]
         )
 

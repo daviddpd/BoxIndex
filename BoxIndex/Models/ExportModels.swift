@@ -8,7 +8,7 @@
 import Foundation
 
 enum BoxIndexSchemaVersion {
-    static let current = 1
+    static let current = 2
 }
 
 struct BoxIndexExportBundle: Codable {
@@ -27,6 +27,7 @@ struct ContainerExportRecord: Codable, Identifiable {
     let subLocation: String?
     let notes: String?
     let colorTag: String?
+    let iconKey: String?
     let photoFileName: String?
     let aliases: [String]
     let createdAt: Date
@@ -54,6 +55,7 @@ extension ContainerExportRecord {
         self.subLocation = container.subLocation
         self.notes = container.notes
         self.colorTag = container.colorTag
+        self.iconKey = container.iconKey
         self.photoFileName = photoFileName
         self.aliases = container.aliases
         self.createdAt = container.createdAt

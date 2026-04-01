@@ -6,55 +6,6 @@
 //
 
 import Foundation
-import SwiftData
-
-@Model
-final class Container {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var labelCode: String
-    var location: String
-    var subLocation: String?
-    var notes: String?
-    var colorTag: String?
-    var photoPath: String?
-    var aliases: [String]
-    var createdAt: Date
-    var updatedAt: Date
-    var isArchived: Bool
-
-    @Relationship(deleteRule: .cascade, inverse: \ContainerItem.container)
-    var items: [ContainerItem]
-
-    init(
-        id: UUID = UUID(),
-        name: String,
-        labelCode: String,
-        location: String,
-        subLocation: String? = nil,
-        notes: String? = nil,
-        colorTag: String? = nil,
-        photoPath: String? = nil,
-        aliases: [String] = [],
-        createdAt: Date = .now,
-        updatedAt: Date = .now,
-        isArchived: Bool = false
-    ) {
-        self.id = id
-        self.name = name
-        self.labelCode = labelCode
-        self.location = location
-        self.subLocation = subLocation
-        self.notes = notes
-        self.colorTag = colorTag
-        self.photoPath = photoPath
-        self.aliases = aliases
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-        self.isArchived = isArchived
-        self.items = []
-    }
-}
 
 extension Container {
     var displayTitle: String {
@@ -83,6 +34,14 @@ extension Container {
             .filter { !$0.isEmpty }
 
         return cleanedAliases.isEmpty ? nil : cleanedAliases.joined(separator: ", ")
+    }
+
+    var selectedIcon: ContainerIcon? {
+        ContainerIcon(rawValue: iconKey ?? "")
+    }
+
+    var resolvedIcon: ContainerIcon {
+        selectedIcon ?? .shippingBox
     }
 
     var qrPayload: String {

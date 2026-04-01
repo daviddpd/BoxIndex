@@ -42,21 +42,15 @@ struct QRLabelPreview {
 @MainActor
 final class QRLabelOutputService {
     func preview(for container: Container, options: QRLabelOutputOptions) throws -> QRLabelPreview {
-        let layout = QRLabelLayoutSpec.make(
-            pageRect: options.exportPaperSize.pageRect,
-            template: options.template
-        )
-        let previewFrame = layout.labelFrames.first ?? CGRect(x: 0, y: 0, width: 320, height: 320)
-        let previewSize = CGSize(
-            width: max(previewFrame.width, 220),
-            height: max(previewFrame.height, 220)
+        let canvasSize = Self.labelCanvasSize(
+            aspectRatio: options.clampedLabelAspectRatio,
+            minimumShortestSide: 300
         )
 
         guard let image = Self.renderLabelImage(
             for: container,
             options: options,
-            canvasSize: previewSize,
-            cornerRadius: layout.cornerRadius
+            canvasSize: canvasSize
         ) else {
             throw QRLabelOutputError.failedToGenerateImage
         }
@@ -115,14 +109,9 @@ final class QRLabelOutputService {
         }
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
 
-        let previewLayout = QRLabelLayoutSpec.make(
-            pageRect: options.exportPaperSize.pageRect,
-            template: options.template
-        )
-        let previewFrame = previewLayout.labelFrames.first ?? CGRect(x: 0, y: 0, width: 340, height: 340)
-        let imageCanvasSize = CGSize(
-            width: max(previewFrame.width, 340),
-            height: max(previewFrame.height, 340)
+        let imageCanvasSize = Self.labelCanvasSize(
+            aspectRatio: options.clampedLabelAspectRatio,
+            minimumShortestSide: 900
         )
 
         var fileNameCounts: [String: Int] = [:]
@@ -149,8 +138,7 @@ final class QRLabelOutputService {
                 guard let image = Self.renderLabelImage(
                     for: container,
                     options: options,
-                    canvasSize: imageCanvasSize,
-                    cornerRadius: previewLayout.cornerRadius
+                    canvasSize: imageCanvasSize
                 ) else {
                     throw QRLabelOutputError.failedToGenerateImage
                 }
@@ -182,7 +170,7 @@ final class QRLabelOutputService {
         }
 
         let manifest = QRLabelExportManifest(
-            schemaVersion: 2,
+            schemaVersion: 3,
             exportedAt: .now,
             appName: "BoxIndex",
             template: options.template,
@@ -190,6 +178,9 @@ final class QRLabelOutputService {
             includeName: options.includeName,
             includeLabelCode: options.includeLabelCode,
             useColorAccent: options.useColorAccent,
+            labelAspectRatio: options.labelAspectRatio,
+            textPosition: options.textPosition,
+            textScale: options.textScale,
             packaging: options.packaging,
             exportsPDFSheet: options.exportsPDFSheet,
             exportsIndividualPNGs: options.exportsIndividualPNGs,
@@ -271,21 +262,17 @@ final class QRLabelOutputService {
                 from: sourceRect,
                 in: rootViewController.view,
                 animated: true
-            ) { _, completed, error in
+            ) { _, _, error in
                 if let error {
                     onComplete(.failure(error))
-                } else if completed {
-                    onComplete(.success(()))
                 } else {
                     onComplete(.success(()))
                 }
             }
         } else {
-            didPresent = controller.present(animated: true) { _, completed, error in
+            didPresent = controller.present(animated: true) { _, _, error in
                 if let error {
                     onComplete(.failure(error))
-                } else if completed {
-                    onComplete(.success(()))
                 } else {
                     onComplete(.success(()))
                 }
@@ -298,7 +285,8 @@ final class QRLabelOutputService {
     }
 
     private static func sheetFileName(for options: QRLabelOutputOptions) -> String {
-        "sheet-\(options.exportPaperSize.rawValue)-r\(options.template.rows)-c\(options.template.columns).pdf"
+        let aspect = String(format: "%.2f", options.labelAspectRatio).replacingOccurrences(of: ".", with: "_")
+        return "sheet-\(options.exportPaperSize.rawValue)-r\(options.template.rows)-c\(options.template.columns)-a\(aspect)-\(options.textPosition.rawValue).pdf"
     }
 
     fileprivate static func fillPageBackground(_ rect: CGRect, context: CGContext) {
@@ -328,17 +316,54 @@ final class QRLabelOutputService {
                 for: containers[containerIndex],
                 in: frame,
                 options: options,
-                cornerRadius: layout.cornerRadius,
                 context: context
             )
+        }
+    }
+
+    private static func labelCanvasSize(
+        aspectRatio: CGFloat,
+        minimumShortestSide: CGFloat
+    ) -> CGSize {
+        let ratio = max(0.5, min(2.5, aspectRatio))
+        let shortestSide = max(240, minimumShortestSide)
+        let squareRootRatio = sqrt(ratio)
+
+        let width = shortestSide * squareRootRatio
+        let height = shortestSide / squareRootRatio
+        return CGSize(width: width, height: height)
+    }
+
+    private static func fittedLabelRect(in slotRect: CGRect, aspectRatio: CGFloat) -> CGRect {
+        let ratio = max(0.5, min(2.5, aspectRatio))
+        let availableRect = slotRect.insetBy(dx: 2, dy: 2)
+        let slotRatio = availableRect.width / max(1, availableRect.height)
+
+        if slotRatio > ratio {
+            let height = availableRect.height
+            let width = height * ratio
+            return CGRect(
+                x: availableRect.midX - (width / 2),
+                y: availableRect.minY,
+                width: width,
+                height: height
+            ).integral
+        } else {
+            let width = availableRect.width
+            let height = width / ratio
+            return CGRect(
+                x: availableRect.minX,
+                y: availableRect.midY - (height / 2),
+                width: width,
+                height: height
+            ).integral
         }
     }
 
     private static func renderLabelImage(
         for container: Container,
         options: QRLabelOutputOptions,
-        canvasSize: CGSize,
-        cornerRadius: CGFloat
+        canvasSize: CGSize
     ) -> UIImage? {
         let format = UIGraphicsImageRendererFormat.preferred()
         format.opaque = true
@@ -352,7 +377,6 @@ final class QRLabelOutputService {
                 for: container,
                 in: rect,
                 options: options,
-                cornerRadius: cornerRadius,
                 context: imageContext.cgContext
             )
         }
@@ -360,69 +384,187 @@ final class QRLabelOutputService {
 
     private static func drawLabel(
         for container: Container,
-        in rect: CGRect,
+        in slotRect: CGRect,
         options: QRLabelOutputOptions,
-        cornerRadius: CGFloat,
         context: CGContext
     ) {
+        let labelRect = fittedLabelRect(in: slotRect, aspectRatio: options.clampedLabelAspectRatio)
         let printableAccent = printableAccentColor(for: container, useColorAccent: options.useColorAccent)
         let borderColor = options.useColorAccent ? printableAccent.withAlphaComponent(0.4) : UIColor.systemGray4
         let titleColor = options.useColorAccent ? printableAccent : UIColor.black
-        let cardRect = rect.insetBy(dx: 2, dy: 2)
-        let cardPath = UIBezierPath(roundedRect: cardRect, cornerRadius: cornerRadius)
+        let cornerRadius = max(10, min(28, min(labelRect.width, labelRect.height) * 0.08))
+        let cardPath = UIBezierPath(roundedRect: labelRect, cornerRadius: cornerRadius)
 
         context.saveGState()
         context.setFillColor(UIColor.white.cgColor)
         cardPath.fill()
         context.setStrokeColor(borderColor.cgColor)
-        context.setLineWidth(max(1, min(rect.width, rect.height) * 0.012))
+        context.setLineWidth(max(1, min(labelRect.width, labelRect.height) * 0.012))
         cardPath.stroke()
 
         if options.useColorAccent {
-            let accentBandHeight = max(6, rect.height * 0.035)
+            let accentBandHeight = max(6, labelRect.height * 0.035)
             let accentBandRect = CGRect(
-                x: cardRect.minX,
-                y: cardRect.minY,
-                width: cardRect.width,
+                x: labelRect.minX,
+                y: labelRect.minY,
+                width: labelRect.width,
                 height: accentBandHeight
             )
             context.setFillColor(printableAccent.withAlphaComponent(0.18).cgColor)
             context.fill(accentBandRect)
         }
 
-        let innerPadding = max(8, min(rect.width, rect.height) * 0.08)
-        let textLineCount = [options.includeLabelCode, options.includeName].filter { $0 }.count
-        let textRegionHeight: CGFloat = if textLineCount == 0 {
-            0
-        } else if textLineCount == 1 {
-            max(34, rect.height * 0.18)
-        } else {
-            max(58, rect.height * 0.30)
+        let innerPadding = max(8, min(labelRect.width, labelRect.height) * 0.08)
+        let interRegionSpacing = max(8, min(labelRect.width, labelRect.height) * 0.04)
+        let scaleFactor = sqrt(options.clampedTextScale)
+        let contentRect = labelRect.insetBy(dx: innerPadding, dy: innerPadding)
+        let textLineCount = CGFloat((options.includeLabelCode ? 1 : 0) + (options.includeName ? 1 : 0))
+
+        let metadataRect: CGRect
+        let qrBounds: CGRect
+        switch options.textPosition {
+        case .top:
+            let textHeight = min(
+                contentRect.height * 0.54,
+                max(58, contentRect.height * (0.20 + (textLineCount * 0.07) + 0.08) * scaleFactor)
+            )
+            metadataRect = CGRect(
+                x: contentRect.minX,
+                y: contentRect.minY,
+                width: contentRect.width,
+                height: textHeight
+            )
+            qrBounds = CGRect(
+                x: contentRect.minX,
+                y: metadataRect.maxY + interRegionSpacing,
+                width: contentRect.width,
+                height: max(0, contentRect.maxY - metadataRect.maxY - interRegionSpacing)
+            )
+        case .bottom:
+            let textHeight = min(
+                contentRect.height * 0.54,
+                max(58, contentRect.height * (0.20 + (textLineCount * 0.07) + 0.08) * scaleFactor)
+            )
+            metadataRect = CGRect(
+                x: contentRect.minX,
+                y: contentRect.maxY - textHeight,
+                width: contentRect.width,
+                height: textHeight
+            )
+            qrBounds = CGRect(
+                x: contentRect.minX,
+                y: contentRect.minY,
+                width: contentRect.width,
+                height: max(0, metadataRect.minY - contentRect.minY - interRegionSpacing)
+            )
+        case .left:
+            let textWidth = min(
+                contentRect.width * 0.5,
+                max(74, contentRect.width * (0.24 + (textLineCount * 0.08) + 0.10) * scaleFactor)
+            )
+            metadataRect = CGRect(
+                x: contentRect.minX,
+                y: contentRect.minY,
+                width: textWidth,
+                height: contentRect.height
+            )
+            qrBounds = CGRect(
+                x: metadataRect.maxX + interRegionSpacing,
+                y: contentRect.minY,
+                width: max(0, contentRect.maxX - metadataRect.maxX - interRegionSpacing),
+                height: contentRect.height
+            )
+        case .right:
+            let textWidth = min(
+                contentRect.width * 0.5,
+                max(74, contentRect.width * (0.24 + (textLineCount * 0.08) + 0.10) * scaleFactor)
+            )
+            metadataRect = CGRect(
+                x: contentRect.maxX - textWidth,
+                y: contentRect.minY,
+                width: textWidth,
+                height: contentRect.height
+            )
+            qrBounds = CGRect(
+                x: contentRect.minX,
+                y: contentRect.minY,
+                width: max(0, metadataRect.minX - contentRect.minX - interRegionSpacing),
+                height: contentRect.height
+            )
         }
 
-        let qrSide = min(
-            cardRect.width - (innerPadding * 2),
-            cardRect.height - (innerPadding * 2) - textRegionHeight
-        )
-        let qrFrame = CGRect(
-            x: cardRect.midX - (qrSide / 2),
-            y: cardRect.minY + innerPadding,
-            width: qrSide,
-            height: qrSide
-        )
+        let qrSide = max(0, min(qrBounds.width, qrBounds.height))
+        if qrSide > 0 {
+            let qrFrame = CGRect(
+                x: qrBounds.midX - (qrSide / 2),
+                y: qrBounds.midY - (qrSide / 2),
+                width: qrSide,
+                height: qrSide
+            ).integral
 
-        if let qrImage = QRCodeService.image(for: container, size: qrSide * 4),
-           let cgImage = qrImage.cgImage {
-            context.interpolationQuality = .none
-            context.draw(cgImage, in: qrFrame)
+            if let qrImage = QRCodeService.image(for: container, size: qrSide * 4),
+               let cgImage = qrImage.cgImage {
+                context.interpolationQuality = .none
+                context.draw(cgImage, in: qrFrame)
+            }
         }
 
-        let textRegionY = qrFrame.maxY + max(6, innerPadding * 0.45)
+        drawMetadataBlock(
+            for: container,
+            in: metadataRect,
+            titleColor: titleColor,
+            accentColor: printableAccent,
+            options: options
+        )
+
+        context.restoreGState()
+    }
+
+    private static func drawMetadataBlock(
+        for container: Container,
+        in rect: CGRect,
+        titleColor: UIColor,
+        accentColor: UIColor,
+        options: QRLabelOutputOptions
+    ) {
+        guard rect.width > 0, rect.height > 0 else {
+            return
+        }
+
+        let icon = container.resolvedIcon
+        let iconContainerSize = min(
+            max(28, min(rect.width, rect.height) * 0.28),
+            rect.width * 0.5
+        )
+        let iconRect = CGRect(
+            x: rect.midX - (iconContainerSize / 2),
+            y: rect.minY,
+            width: iconContainerSize,
+            height: iconContainerSize
+        )
+
+        let iconBackground = options.useColorAccent
+            ? accentColor.withAlphaComponent(0.14)
+            : UIColor.systemGray6
+        let iconPath = UIBezierPath(
+            roundedRect: iconRect,
+            cornerRadius: max(10, iconContainerSize * 0.28)
+        )
+        iconBackground.setFill()
+        iconPath.fill()
+
+        drawIcon(
+            icon,
+            in: iconRect.insetBy(dx: iconContainerSize * 0.2, dy: iconContainerSize * 0.2),
+            color: titleColor
+        )
+
+        let textTop = iconRect.maxY + max(6, rect.height * 0.06)
         let textRect = CGRect(
-            x: cardRect.minX + innerPadding,
-            y: textRegionY,
-            width: cardRect.width - (innerPadding * 2),
-            height: max(0, cardRect.maxY - textRegionY - innerPadding)
+            x: rect.minX,
+            y: textTop,
+            width: rect.width,
+            height: max(0, rect.maxY - textTop)
         )
 
         drawText(
@@ -431,8 +573,6 @@ final class QRLabelOutputService {
             titleColor: titleColor,
             options: options
         )
-
-        context.restoreGState()
     }
 
     private static func drawText(
@@ -451,9 +591,16 @@ final class QRLabelOutputService {
         paragraphStyle.alignment = .center
 
         let attributed = NSMutableAttributedString()
-        let maxDimension = min(rect.width, rect.height)
-        let labelFont = UIFont.systemFont(ofSize: max(10, min(22, maxDimension * 0.36)), weight: .semibold)
-        let nameFont = UIFont.systemFont(ofSize: max(9, min(19, maxDimension * 0.28)), weight: .regular)
+        let scale = options.clampedTextScale
+        let referenceDimension = min(max(rect.width * 0.44, rect.height), max(rect.width, rect.height))
+        let labelFont = UIFont.systemFont(
+            ofSize: max(10, min(30, referenceDimension * 0.18 * scale)),
+            weight: .semibold
+        )
+        let nameFont = UIFont.systemFont(
+            ofSize: max(9, min(24, referenceDimension * 0.15 * scale)),
+            weight: .regular
+        )
 
         if options.includeLabelCode, !labelCode.isEmpty {
             attributed.append(
@@ -485,6 +632,10 @@ final class QRLabelOutputService {
             )
         }
 
+        guard attributed.length > 0 else {
+            return
+        }
+
         attributed.draw(
             with: rect,
             options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
@@ -492,11 +643,25 @@ final class QRLabelOutputService {
         )
     }
 
+    private static func drawIcon(
+        _ icon: ContainerIcon,
+        in rect: CGRect,
+        color: UIColor
+    ) {
+        let pointSize = min(rect.width, rect.height) * 0.88
+        let configuration = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+        let image = UIImage(systemName: icon.resolvedSymbolName, withConfiguration: configuration)?
+            .withTintColor(color, renderingMode: .alwaysOriginal)
+
+        image?.draw(in: rect)
+    }
+
     private static func printableAccentColor(for container: Container, useColorAccent: Bool) -> UIColor {
-        guard useColorAccent, let accent = ContainerColorTag.uiColor(for: container.colorTag) else {
+        guard useColorAccent else {
             return .black
         }
 
+        let accent = ContainerColorTag.uiColor(for: container.colorTag) ?? container.resolvedIcon.uiColor
         var red: CGFloat = 0
         var green: CGFloat = 0
         var blue: CGFloat = 0

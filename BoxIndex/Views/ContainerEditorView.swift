@@ -21,6 +21,7 @@ struct ContainerEditorView: View {
     @State private var subLocation: String
     @State private var notes: String
     @State private var colorTag: String
+    @State private var iconKey: String
     @State private var aliasesText: String
     @State private var isArchived: Bool
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -37,6 +38,7 @@ struct ContainerEditorView: View {
         _subLocation = State(initialValue: container?.subLocation ?? "")
         _notes = State(initialValue: container?.notes ?? "")
         _colorTag = State(initialValue: container?.colorTag ?? "")
+        _iconKey = State(initialValue: container?.iconKey ?? "")
         _aliasesText = State(initialValue: SearchService.joinedList(container?.aliases ?? []))
         _isArchived = State(initialValue: container?.isArchived ?? false)
         _photoImage = State(initialValue: container.flatMap { PhotoStorageService.image(for: $0.photoPath) })
@@ -69,6 +71,23 @@ struct ContainerEditorView: View {
                     Text("None").tag("")
                     ForEach(ContainerColorTag.allCases) { tag in
                         Text(tag.title).tag(tag.rawValue)
+                    }
+                }
+
+                NavigationLink {
+                    ContainerIconPickerView(selection: $iconKey)
+                } label: {
+                    LabeledContent("Icon") {
+                        HStack(spacing: 10) {
+                            ContainerIconBadgeView(
+                                icon: ContainerIcon(rawValue: iconKey) ?? .shippingBox,
+                                size: 34,
+                                accentColor: ContainerColorTag.color(for: colorTag) ?? (ContainerIcon(rawValue: iconKey)?.color ?? .accentColor)
+                            )
+
+                            Text(ContainerIcon.title(for: iconKey.nilIfBlank) ?? "Default Box")
+                                .foregroundStyle(.primary)
+                        }
                     }
                 }
 
@@ -185,6 +204,7 @@ struct ContainerEditorView: View {
                 container.subLocation = subLocation.nilIfBlank
                 container.notes = notes.nilIfBlank
                 container.colorTag = colorTag.nilIfBlank
+                container.iconKey = iconKey.nilIfBlank
                 container.aliases = SearchService.parseCommaSeparated(aliasesText)
                 container.isArchived = isArchived
                 container.photoPath = photoPath
@@ -197,6 +217,7 @@ struct ContainerEditorView: View {
                     subLocation: subLocation.nilIfBlank,
                     notes: notes.nilIfBlank,
                     colorTag: colorTag.nilIfBlank,
+                    iconKey: iconKey.nilIfBlank,
                     photoPath: photoPath,
                     aliases: SearchService.parseCommaSeparated(aliasesText),
                     isArchived: isArchived

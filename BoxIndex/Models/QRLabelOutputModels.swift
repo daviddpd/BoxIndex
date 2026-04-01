@@ -86,6 +86,19 @@ enum QRLabelIndividualAssetFormat: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum QRLabelTextPosition: String, CaseIterable, Codable, Identifiable {
+    case top
+    case bottom
+    case left
+    case right
+
+    var id: String { rawValue }
+
+    var title: String {
+        rawValue.capitalized
+    }
+}
+
 struct QRLabelTemplateDescriptor: Codable, Hashable {
     var kind: QRLabelTemplateKind = .flexibleGrid
     var rows = 2
@@ -106,6 +119,9 @@ struct QRLabelOutputOptions: Codable, Hashable {
     var exportPaperSize: QRLabelPageSize = .letter
     var exportsPDFSheet = true
     var exportsIndividualPNGs = true
+    var labelAspectRatio = 1.0
+    var textPosition: QRLabelTextPosition = .bottom
+    var textScale = 1.0
 
     var hasExportSelection: Bool {
         exportsPDFSheet || exportsIndividualPNGs
@@ -129,12 +145,33 @@ struct QRLabelExportManifest: Codable {
     let includeName: Bool
     let includeLabelCode: Bool
     let useColorAccent: Bool
+    let labelAspectRatio: Double
+    let textPosition: QRLabelTextPosition
+    let textScale: Double
     let packaging: QRLabelExportPackaging
     let exportsPDFSheet: Bool
     let exportsIndividualPNGs: Bool
     let individualAssetFormat: QRLabelIndividualAssetFormat
     let sheetFileName: String?
     let individualFiles: [QRLabelExportFileRecord]
+}
+
+extension QRLabelOutputOptions {
+    var clampedLabelAspectRatio: CGFloat {
+        CGFloat(max(0.5, min(2.5, labelAspectRatio)))
+    }
+
+    var clampedTextScale: CGFloat {
+        CGFloat(max(0.65, min(1.8, textScale)))
+    }
+
+    var aspectRatioSummary: String {
+        String(format: "%.2f:1", labelAspectRatio)
+    }
+
+    var textScaleSummary: String {
+        String(format: "%.0f%%", textScale * 100)
+    }
 }
 
 struct QRLabelExportFileRecord: Codable, Identifiable {

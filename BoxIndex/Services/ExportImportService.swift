@@ -210,6 +210,7 @@ final class ExportImportService {
             container.subLocation = record.subLocation
             container.notes = record.notes
             container.colorTag = record.colorTag
+            container.iconKey = record.iconKey
             container.aliases = record.aliases
             container.createdAt = record.createdAt
             container.updatedAt = record.updatedAt
@@ -392,6 +393,7 @@ final class ExportImportService {
                 record.subLocation ?? "",
                 record.notes ?? "",
                 record.colorTag ?? "",
+                record.iconKey ?? "",
                 record.photoFileName ?? "",
                 SearchService.joinedList(record.aliases),
                 iso8601(record.createdAt),
@@ -409,6 +411,7 @@ final class ExportImportService {
                 "subLocation",
                 "notes",
                 "colorTag",
+                "iconKey",
                 "photoFileName",
                 "aliases",
                 "createdAt",

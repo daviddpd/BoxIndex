@@ -10,14 +10,24 @@ import SwiftUI
 struct ContainerRowView: View {
     let container: Container
 
+    private var accentColor: Color {
+        ContainerColorTag.color(for: container.colorTag) ?? container.resolvedIcon.color
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(ContainerColorTag.color(for: container.colorTag) ?? Color.secondary.opacity(0.25))
+                .fill(accentColor.opacity(0.9))
                 .frame(width: 10)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
+                    ContainerIconBadgeView(
+                        icon: container.resolvedIcon,
+                        size: 28,
+                        accentColor: accentColor
+                    )
+
                     Text(container.displayTitle)
                         .font(.headline)
                         .lineLimit(1)
@@ -64,11 +74,11 @@ struct ContainerRowView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHidden(true)
             } else {
-                Image(systemName: "shippingbox.fill")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 58, height: 58)
-                    .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                ContainerIconBadgeView(
+                    icon: container.resolvedIcon,
+                    size: 58,
+                    accentColor: accentColor
+                )
                     .accessibilityHidden(true)
             }
         }
